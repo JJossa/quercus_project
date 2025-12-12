@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Registro - Quercus</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
+  <!-- Fuente DynaPuff solo para la página de registro -->
+  <link href="https://fonts.googleapis.com/css2?family=DynaPuff:wght@400;700&display=swap" rel="stylesheet">
+  <style>
+    /* Aplicar DynaPuff únicamente en register */
+    body.register-page { font-family: 'DynaPuff', cursive; }
+    /* Forzar negrilla en todo el contenedor de registro sin afectar otras páginas */
+    body.register-page, body.register-page * { font-weight: 700; }
+    /* Opcional: mejorar legibilidad de placeholders y botones */
+    body.register-page input, body.register-page button { font-weight: 700; }
+  </style>
+</head>
+
+<body class="register-page">
+  <!-- Logo + botón inicio -->
+  <div class="topbar-register">
+    <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="Logo" class="logo-img">
+    <button class="btn-home" onclick="window.location='/'">
+      <span class="home-icon">🏠</span> INICIO
+    </button>
+  </div>
+
+  <!-- Contenedor principal -->
+  <div class="register-container">
+  <h2>REGISTRO</h2>
+
+    {% if error %}
+      <p style="color: red; text-align: center; margin-bottom: 10px;">
+        {{ error }}
+      </p>
+    {% endif %}
+
+    <form method="POST" class="register-form">
+      <div class="input-group">
+        <input type="text" name="usuario" placeholder="NOMBRES Y APELLIDOS" required>
+      </div>
+
+      <div class="input-group">
+        <input type="email" name="correo" placeholder="CORREO ELECTRONICO" required>
+      </div>
+
+      <div class="input-group password-field">
+        <input type="password" name="contrasena" placeholder="CONTRASEÑA" required>
+      </div>
+
+      <div class="input-group password-field">
+        <input type="password" name="confirmar" placeholder="CONFIRMAR CONTRASEÑA" required>
+      </div>
+
+      <button type="button" class="btn-google">Continuar con Google</button>
+      <button type="submit" class="btn-register">REGISTRAR</button>
+    </form>
+  </div>
+</body>
+</html>

@@ -1,0 +1,42 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Quercus</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+ <link href="https://fonts.googleapis.com/css2?family=DynaPuff:wght@400..700&display=swap" rel="stylesheet">
+</head>
+
+
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>QUERCUS — Universidad Nacional de Colombia</title>
+  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;600;700&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <div class="logo"> 
+      <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="Logo QUERCUS" class="logo-img">
+      <span class="brand">QUERCUS</span>
+    </div>
+    <nav>
+      <button class="btn-login" onclick="window.location='/login'">Iniciar Sesión</button>
+    </nav>
+  </header>
+
+  <main class="hero">
+    <section class="hero-left">
+      <h1>Informa, crea e infórmate de los eventos de la Universidad Nacional de Colombia.</h1>
+      <p class="sub">QUERCUS es la nueva plataforma para compartir, comunicar e informar eventos dentro de la Universidad Nacional, adaptándose a tu ritmo y a tus intereses.</strong></p>
+      <a class="cta" href="/register">Crear Cuenta</a>
+    </section>
+
+    <section class="hero-right">
+      <img src="{{ url_for('static', filename='img/hero.png') }}" alt="Estudiante programando" class="hero-img">
+    </section>
+  </main>
+</body>
+</html>

@@ -1,0 +1,754 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Menú Principal - Quercus</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=DynaPuff:wght@400;700&display=swap" rel="stylesheet">
+  <!-- FontAwesome kit removed to avoid CORS in local dev -->
+  <style>
+    body.menu-page { text-align: center; }
+
+    .menu-container { margin-top: 120px; }
+
+    .menu-container h2 {
+      font-size: 28px;
+      font-weight: 700;
+      margin-bottom: 40px;
+    }
+
+    .icon-grid { display:grid; gap:28px; margin:0 auto; }
+
+    /* filas separadas para controlar 2 arriba / 3 abajo */
+    .icon-row-top { grid-template-columns: repeat(2, minmax(160px, 1fr)); max-width:760px; }
+    .icon-row-bottom { grid-template-columns: repeat(3, minmax(140px, 1fr)); max-width:960px; margin-top:16px; }
+
+    .icon-item{ background:#fff;border-radius:20px;padding:26px 18px;box-shadow:0 6px 18px rgba(0,0,0,0.08);transition:all .2s ease;cursor:pointer;display:flex;flex-direction:column;align-items:center }
+    .icon-item:hover{ transform:scale(1.04); box-shadow:0 10px 22px rgba(0,0,0,0.12) }
+
+    .menu-icon{ width:80px; height:auto; display:block; margin:0 auto 12px }
+    .icon-label{ font-weight:700; font-size:16px; text-align:center }
+
+    @media (max-width:720px){ .icon-row-top, .icon-row-bottom{ grid-template-columns:1fr; max-width:92% } .menu-icon{ width:64px } }
+  /* tamaño e imagen de usuario en topbar (solo para menu) */
+  .user-icon{ width:56px; height:auto; border-radius:8px; transition: transform .15s ease }
+  .user-icon:hover{ transform: scale(1.08) }
+
+  /* PROFILE PANEL STYLES */
+  .profile-panel{position:fixed;top:56px;right:18px;z-index:10010;pointer-events:none}
+  .profile-outer{background:#2f2f2f;border-radius:22px;padding:10px;box-shadow:0 14px 38px rgba(0,0,0,0.25);pointer-events:auto}
+  .profile-inner{background:#fff;border-radius:14px;padding:12px 14px;width:220px;position:relative}
+  .profile-close{position:absolute;right:8px;top:6px;border:0;background:#e74c3c;color:#fff;width:28px;height:28px;border-radius:6px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+  .profile-avatar-wrap{text-align:center;margin-top:6px}
+  .profile-avatar-bottom{margin-top:10px}
+  .profile-avatar{width:86px;height:86px;border-radius:50%;display:inline-block}
+  .avatar-list{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .avatar-thumb{width:44px;height:44px;border-radius:8px;cursor:pointer;border:2px solid transparent;transition:transform .12s ease,border-color .12s ease}
+  .avatar-thumb:hover{transform:translateY(-3px)}
+  .avatar-thumb.selected{border-color:var(--primary, #8c75e6)}
+  .profile-text{margin-top:10px;text-align:left}
+  .profile-row{display:flex;flex-direction:column;align-items:center;margin-bottom:8px}
+  .profile-row strong{font-size:12px;color:#333;margin-bottom:6px}
+  .profile-row div{font-size:13px;color:#111}
+  .editable{background:#f7f7f9;border-radius:8px;padding:6px 8px;min-width:140px;text-align:center}
+  .profile-panel.hidden{opacity:0;transform:translateY(-6px) scale(.98);transition:all .14s ease}
+  .profile-panel.open{opacity:1;transform:none}
+  /* logout button + confirmation modal */
+  .logout-btn{background:#ff4757;color:#fff;border:0;padding:8px 14px;border-radius:10px;font-weight:700;cursor:pointer}
+  .logout-btn:hover{background:#ff6b78}
+  .logout-modal{position:fixed;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:11000;visibility:hidden;opacity:0;transition:opacity .12s ease}
+  .logout-modal.visible{visibility:visible;opacity:1;background:rgba(0,0,0,0.45)}
+  .logout-box{background:#fff;border-radius:14px;padding:18px 18px;max-width:360px;width:90%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,0.3)}
+  .logout-box .modal-logo{width:64px;margin-bottom:10px}
+  .logout-box p{font-weight:700;margin:6px 0 12px}
+  .modal-actions{display:flex;gap:10px;justify-content:center}
+  .btn-yes{background:#e74c3c;color:#fff;border:0;padding:8px 14px;border-radius:10px;cursor:pointer;font-weight:700;transition:background .12s ease, transform .12s ease}
+  .btn-yes:hover{background:#ff6b6b;transform:translateY(-2px)}
+  .btn-no{background:#f0f0f0;color:#333;border:0;padding:8px 14px;border-radius:10px;cursor:pointer;transition:background .12s ease, transform .12s ease}
+  .btn-no:hover{background:#e6e6e6;transform:translateY(-2px)}
+  /* Calendar cell styles and animations */
+  .cal-cell{padding:14px 6px;text-align:center;border-radius:8px;cursor:pointer;transition:transform .18s ease, box-shadow .18s ease, background .18s ease;font-weight:600}
+  .cal-cell.today{background:#cfeff0;font-weight:800}
+  .cal-cell.cal-selected{background:#8ce0d8;color:#072;}
+  .cal-cell.cal-selected-persist{background:#05a68a;color:#fff;box-shadow:0 10px 30px rgba(5,166,138,0.12);}
+  .cal-cell.pop{animation: pop .48s cubic-bezier(.2,.9,.25,1) both}
+  @keyframes pop{0%{transform:scale(1);box-shadow:none}50%{transform:scale(1.06);box-shadow:0 12px 28px rgba(0,0,0,0.12)}100%{transform:scale(1);box-shadow:none}}
+  /* event marker */
+  /* visual tokens & palette */
+  :root{--cal-today:#e6fbf7;--cal-selected:#05a68a;--cal-accent:#ff6b6b;--card-bg:#ffffff;--card-shadow:0 10px 30px rgba(13,13,13,0.06);--muted:#6b6b6b}
+  /* event marker */
+  .cal-dot{width:8px;height:8px;border-radius:50%;background:var(--cal-accent);margin-top:6px;margin-left:auto;margin-right:auto}
+  .cal-badge{position:absolute;right:8px;top:6px;min-width:22px;padding:2px 6px;border-radius:12px;background:var(--cal-accent);color:#fff;font-size:12px;font-weight:700;display:inline-flex;align-items:center;justify-content:center;box-shadow:0 6px 14px rgba(0,0,0,0.12)}
+  .cal-cell{position:relative}
+  /* events list (carrusel) */
+  .ev-slider{display:flex;align-items:center;gap:8px;width:100%}
+  .ev-track{display:flex;gap:12px;overflow-x:auto;padding:6px;scroll-snap-type:x mandatory;scroll-behavior:smooth}
+  .ev-track::-webkit-scrollbar{height:8px}
+  .ev-track::-webkit-scrollbar-thumb{background:rgba(0,0,0,0.12);border-radius:8px}
+  .ev-card{background:var(--card-bg);border-radius:12px;padding:12px;display:flex;gap:12px;align-items:flex-start;box-shadow:var(--card-shadow);min-width:320px;max-width:520px;scroll-snap-align:start}
+  .ev-thumb{width:120px;height:84px;object-fit:cover;border-radius:10px;cursor:pointer;flex-shrink:0}
+  .ev-placeholder{width:120px;height:84px;border-radius:10px;flex-shrink:0;background:linear-gradient(135deg,#e6fbf7,#dff3ef);display:flex;align-items:center;justify-content:center;font-weight:800;color:#0b6b56;font-size:20px}
+  .ev-thumb-wrap{position:relative;width:120px;height:84px;flex-shrink:0}
+  .img-zoom-btn{position:absolute;right:8px;bottom:8px;background:var(--cal-accent);color:#fff;width:36px;height:36px;border-radius:50%;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;border:0;box-shadow:0 6px 18px rgba(0,0,0,0.18);transition:transform .12s ease, box-shadow .12s ease}
+  .img-zoom-btn:hover{transform:translateY(-2px) scale(1.05);box-shadow:0 10px 26px rgba(0,0,0,0.22)}
+  .ev-meta{flex:1}
+  .ev-meta h4{margin:0 0 6px 0;font-size:17px;color:#222}
+  .ev-meta div{color:var(--muted);font-size:13px}
+  .ev-nav-btn{background:transparent;border:0;width:40px;height:40px;border-radius:8px;cursor:pointer;font-size:20px;color:#333;display:flex;align-items:center;justify-content:center}
+  .ev-nav-btn:hover{background:rgba(0,0,0,0.04)}
+  .create-on-date{display:inline-block;margin-top:8px;padding:8px 12px;background:var(--cal-selected);color:#fff;border-radius:10px;text-decoration:none;font-weight:700}
+  #img-preview-modal{position:fixed;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:16000;background:rgba(0,0,0,0.6);visibility:hidden;opacity:0;transition:opacity .12s ease}
+  #img-preview-modal.visible{visibility:visible;opacity:1}
+  #img-preview-modal img{max-width:92%;max-height:86%;border-radius:8px;box-shadow:0 20px 60px rgba(0,0,0,0.6);transform:scale(.96);opacity:0;transition:transform .28s cubic-bezier(.2,.9,.25,1), opacity .18s ease}
+  #img-preview-modal.visible img{transform:scale(1);opacity:1}
+  /* event-card modal styles */
+  .event-card-modal{position:fixed;left:0;top:0;width:100%;height:100%;z-index:20000;display:none;align-items:center;justify-content:center}
+  .event-card-modal .ecm-backdrop{position:absolute;left:0;top:0;width:100%;height:100%;background:rgba(0,0,0,0.5)}
+  .event-card-modal .ecm-card{position:relative;background:linear-gradient(180deg,#2b2b2b,#3b3b3b);color:#fff;border-radius:18px;max-width:520px;width:94%;padding:14px 14px 18px;box-shadow:0 30px 100px rgba(0,0,0,0.6);transform:translateY(0)}
+  .event-card-modal .ecm-close{position:absolute;right:8px;top:8px;background:rgba(255,255,255,0.08);border:0;color:#fff;width:36px;height:36px;border-radius:8px;cursor:pointer}
+  .event-card-modal .ecm-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:6px}
+  .event-card-modal .ecm-badge{background:var(--cal-accent);padding:6px 10px;border-radius:10px;font-weight:800;font-size:12px;color:#fff}
+  /* remove decorative skyline to avoid blue block */
+  .event-card-modal .ecm-skyline{display:none}
+  .event-card-modal .ecm-body{padding:6px 4px}
+  .event-card-modal .ecm-title{margin:8px 0;font-size:18px}
+  .event-card-modal .ecm-image-wrap{width:100%;height:220px;border-radius:12px;overflow:hidden;background:linear-gradient(180deg, rgba(0,0,0,0.06), rgba(0,0,0,0.02));margin:10px 0;display:flex;align-items:center;justify-content:center}
+  .event-card-modal .ecm-image-wrap img{width:100%;height:100%;object-fit:cover}
+  .event-card-modal .ecm-image-wrap .img-zoom-btn{position:absolute;right:12px;bottom:12px;background:var(--cal-accent);color:#fff;border:0;box-shadow:0 8px 20px rgba(0,0,0,0.2)}
+  .event-card-modal .ecm-desc{font-size:14px;opacity:0.95;max-height:120px;overflow:auto;margin-top:6px}
+  .event-card-modal .ecm-footer{display:flex;justify-content:center;margin-top:8px}
+  .event-card-modal .ecm-place{background:#fff;color:#222;padding:8px 14px;border-radius:22px;font-weight:800}
+  .event-card-modal .ecm-prev, .event-card-modal .ecm-next{position:absolute;top:50%;transform:translateY(-50%);background:rgba(0,0,0,0.28);border:0;color:#fff;font-size:22px;width:48px;height:48px;border-radius:10px;cursor:pointer;display:flex;align-items:center;justify-content:center}
+  .event-card-modal .ecm-prev{left:10px;z-index:6}
+  .event-card-modal .ecm-next{right:10px;z-index:6}
+  .event-card-modal .ecm-dots{display:flex;gap:6px}
+  .event-card-modal .ecm-dots .dot{width:8px;height:8px;border-radius:6px;background:rgba(255,255,255,0.18)}
+  .event-card-modal .ecm-dots .dot.active{background:var(--cal-accent)}
+  .event-card-modal .ecm-counter{font-size:13px;color:rgba(255,255,255,0.95)}
+  .event-card-modal .ecm-counter{font-size:13px;color:rgba(255,255,255,0.95)}
+  </style>
+</head>
+<body class="menu-page">
+  <!-- Topbar: logo en esquina superior izquierda y menú usuario en esquina superior derecha -->
+  <div class="topbar-register" style="justify-content:space-between;left:20px;right:20px;width:calc(100% - 40px);">
+    <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="Logo" class="logo-img">
+    <img id="user-icon" src="{{ url_for('static', filename='img/icono_usuario.png') }}" alt="Perfil" class="user-icon" style="cursor:pointer">
+  </div>
+  <!-- PROFILE PANEL: dark outer + inner white card (hidden by default) -->
+  <div id="profile-panel" class="profile-panel" aria-hidden="true">
+    <div class="profile-outer">
+      <div class="profile-inner">
+        <button id="profile-close" class="profile-close" aria-label="Cerrar">✕</button>
+        <div class="profile-text">
+          <div class="profile-row"><strong>Nombre:</strong><div id="profile-name">admin</div></div>
+          <div class="profile-row"><strong>Apodo:</strong><div id="profile-nick" class="editable" contenteditable="true">admin</div></div>
+          <div class="profile-row"><strong>Correo:</strong><div id="profile-email">admin@gmail.com</div></div>
+        </div>
+        <div class="profile-avatar-wrap profile-avatar-bottom">
+          <img id="profile-avatar" src="{{ url_for('static', filename='img/icono_usuario.png') }}" alt="avatar" class="profile-avatar">
+        </div>
+        <!-- avatar selector -->
+        <div class="avatar-selector" style="margin-top:10px;text-align:center">
+          <div style="font-weight:700;margin-bottom:6px">Seleccionar avatar</div>
+          <div class="avatar-list">
+            <img src="{{ url_for('static', filename='img/avatares/avatar1.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar1.png') }}" class="avatar-thumb">
+            <img src="{{ url_for('static', filename='img/avatares/avatar2.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar2.png') }}" class="avatar-thumb">
+            <img src="{{ url_for('static', filename='img/avatares/avatar3.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar3.png') }}" class="avatar-thumb">
+            <img src="{{ url_for('static', filename='img/avatares/avatar4.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar4.png') }}" class="avatar-thumb">
+          </div>
+        </div>
+        <div style="text-align:center;margin-top:10px;">
+          <button id="logout-btn" class="logout-btn">Salir</button>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="menu-container">
+    <h2>¿Qué deseas hacer hoy?</h2>
+
+    <div class="icon-grid icon-row-top">
+      <div class="icon-item">
+        <a href="{{ url_for('eventos') }}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;align-items:center;width:100%">
+          <img src="{{ url_for('static', filename='img/icono1.png') }}" alt="Eventos" class="menu-icon">
+          <div class="icon-label">Eventos</div>
+        </a>
+      </div>
+      {# Tarjeta de gestión de eventos: solo admin u organizador #}
+      {% set role = (session.get('role_name') or 'estudiante')|lower %}
+      {% if role in ['admin', 'organizador'] %}
+        <div class="icon-item">
+          <a href="{{ url_for('horarios') }}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;align-items:center;width:100%">
+            <img src="{{ url_for('static', filename='img/icono2.png') }}" alt="Horarios" class="menu-icon">
+            <div class="icon-label">Crear Eventos</div>
+          </a>
+        </div>
+      {% endif %}
+    </div>
+
+    <div class="icon-grid icon-row-bottom">
+        <div class="icon-item">
+          <a href="{{ url_for('alertas') }}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;align-items:center;width:100%">
+            <img src="{{ url_for('static', filename='img/icono3.png') }}" alt="Alertas" class="menu-icon">
+            <div class="icon-label">Alertas</div>
+          </a>
+        </div>
+      <div class="icon-item">
+        <img src="{{ url_for('static', filename='img/icono4.png') }}" alt="Mensajes" class="menu-icon">
+        <div class="icon-label">Mensajes</div>
+      </div>
+      <div class="icon-item">
+        <div id="config-btn" style="width:100%;display:flex;flex-direction:column;align-items:center;">
+          <img src="{{ url_for('static', filename='img/icono5.png') }}" alt="Configuración" class="menu-icon" style="cursor:pointer">
+          <div class="icon-label">Configuración</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logout confirmation modal -->
+  <div id="logout-modal" class="logout-modal" aria-hidden="true">
+    <div class="logout-box">
+      <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="logo" class="modal-logo">
+      <p>¿Estás seguro de salir?</p>
+      <div class="modal-actions">
+        <button id="confirm-yes" class="btn-yes">Sí</button>
+        <button id="confirm-no" class="btn-no">No</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Configuration modal (avatar + calendar) -->
+  <div id="config-modal" class="logout-modal" aria-hidden="true" style="display:none;">
+    <div class="logout-box" style="max-width:980px;width:94%;padding:12px 14px;">
+      <div style="display:flex;gap:14px;align-items:flex-start;">
+        <div style="min-width:260px;">
+          <div style="text-align:center;margin-bottom:8px">
+            <h3 style="margin:6px 0;font-family:'DynaPuff',cursive">Configuración</h3>
+          </div>
+          <!-- profile area copied for parity -->
+          <div style="background:#fff;border-radius:12px;padding:12px;">
+            <div style="text-align:center">
+              <img id="cfg-profile-avatar" src="{{ url_for('static', filename='img/icono_usuario.png') }}" alt="avatar" style="width:86px;height:86px;border-radius:12px;display:inline-block">
+            </div>
+            <div style="margin-top:10px;font-weight:700">Cuenta</div>
+            <div style="margin-top:6px">Nombre: <span id="cfg-profile-name">admin</span></div>
+            <div>Apodo: <span id="cfg-profile-nick">admin</span></div>
+            <div style="margin-top:10px;text-align:center"><a href="{{ url_for('menu') }}" class="btn-no" style="text-decoration:none;padding:8px 18px;border-radius:10px;">Volver al menú</a></div>
+          </div>
+        </div>
+        <div style="flex:1;">
+          <div style="background:#fff;border-radius:12px;padding:14px;min-height:420px;display:flex;flex-direction:column;align-items:center;">
+            <div id="calendar-root" style="width:100%;max-width:640px;"></div>
+            <div id="events-list" style="width:100%;max-width:760px;margin-top:12px;display:none">
+              <div class="ev-slider" aria-live="polite" role="region" style="width:100%">
+                <button class="ev-nav-btn ev-prev" aria-label="Anterior" style="display:none">‹</button>
+                <div class="ev-track" role="list"></div>
+                <button class="ev-nav-btn ev-next" aria-label="Siguiente" style="display:none">›</button>
+              </div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      const userIcon = document.getElementById('user-icon');
+      const panel = document.getElementById('profile-panel');
+      const closeBtn = document.getElementById('profile-close');
+      const nick = document.getElementById('profile-nick');
+
+      // defaults
+      const defaultProfile = { name:'admin', nick:'admin', email:'admin@gmail.com', avatar: "{{ url_for('static', filename='img/icono_usuario.png') }}" };
+
+      function load(){
+        try{
+          const p = JSON.parse(localStorage.getItem('quercus_profile')||'null') || defaultProfile;
+          document.getElementById('profile-name').textContent = p.name;
+          nick.textContent = p.nick;
+          document.getElementById('profile-email').textContent = p.email;
+          document.getElementById('profile-avatar').src = p.avatar;
+          // also update the topbar user icon so it reflects saved avatar
+          try{ if(userIcon) userIcon.src = p.avatar; }catch(e){}
+          // mark selected thumbnail if any
+          markSelected && markSelected(p.avatar);
+        }catch(e){ console.warn(e); }
+      }
+
+      function save(){
+        try{
+          const obj = { name: document.getElementById('profile-name').textContent.trim(), nick: nick.textContent.trim(), email: document.getElementById('profile-email').textContent.trim(), avatar: document.getElementById('profile-avatar').src };
+          localStorage.setItem('quercus_profile', JSON.stringify(obj));
+        }catch(e){ console.warn(e); }
+      }
+
+      // avatar selector handling
+      function markSelected(src){
+        const thumbs = document.querySelectorAll('.avatar-thumb');
+        thumbs.forEach(t => { if(t.dataset && t.dataset.src === src) t.classList.add('selected'); else t.classList.remove('selected'); });
+      }
+      const thumbs = document.querySelectorAll('.avatar-thumb');
+      thumbs.forEach(t => {
+        t.addEventListener('click', function(e){
+          e.stopPropagation();
+          const src = this.dataset.src || this.src;
+          document.getElementById('profile-avatar').src = src;
+          // update topbar user icon as well
+          try{ if(userIcon) userIcon.src = src; }catch(err){}
+          markSelected(src);
+          save();
+        });
+      });
+
+      function toggle(){ if(panel.classList.contains('open')) close(); else open(); }
+      function open(){ panel.classList.add('open'); panel.classList.remove('hidden'); panel.setAttribute('aria-hidden','false'); }
+      function close(){ panel.classList.remove('open'); panel.classList.add('hidden'); panel.setAttribute('aria-hidden','true'); }
+
+  userIcon.addEventListener('click', function(e){ e.stopPropagation(); toggle(); });
+      closeBtn.addEventListener('click', function(e){ e.stopPropagation(); close(); });
+      document.addEventListener('click', function(ev){ if(!panel.contains(ev.target) && !userIcon.contains(ev.target)) close(); });
+
+      nick.addEventListener('blur', save);
+      nick.addEventListener('keydown', function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); nick.blur(); save(); } });
+
+      // init
+      panel.classList.add('hidden');
+      load();
+      // logout modal handlers
+      const logoutBtn = document.getElementById('logout-btn');
+      const logoutModal = document.getElementById('logout-modal');
+      const confirmYes = document.getElementById('confirm-yes');
+      const confirmNo = document.getElementById('confirm-no');
+
+      logoutBtn && logoutBtn.addEventListener('click', function(e){ e.stopPropagation(); logoutModal.classList.add('visible'); logoutModal.setAttribute('aria-hidden','false'); });
+      confirmNo && confirmNo.addEventListener('click', function(e){ e.stopPropagation(); logoutModal.classList.remove('visible'); logoutModal.setAttribute('aria-hidden','true'); });
+      // click outside to close modal
+      logoutModal && logoutModal.addEventListener('click', function(ev){ if(ev.target === logoutModal){ logoutModal.classList.remove('visible'); logoutModal.setAttribute('aria-hidden','true'); } });
+      confirmYes && confirmYes.addEventListener('click', function(){
+        // perform logout: clear localStorage profile and redirect to /login
+        try{ localStorage.removeItem('quercus_profile'); }catch(e){}
+        window.location.href = '/logout';
+      });
+    })();
+  </script>
+  <script>
+    (function(){
+      // Configuration modal interactions + calendar renderer
+      const configBtn = document.getElementById('config-btn');
+      const cfgModal = document.getElementById('config-modal');
+      const cfgAvatar = document.getElementById('cfg-profile-avatar');
+      const cfgName = document.getElementById('cfg-profile-name');
+      const cfgNick = document.getElementById('cfg-profile-nick');
+
+      function openConfig(){ if(cfgModal){ cfgModal.style.display='flex'; cfgModal.classList.add('visible'); cfgModal.setAttribute('aria-hidden','false'); } populateProfile(); }
+      function closeConfig(){ if(cfgModal){ cfgModal.style.display='none'; cfgModal.classList.remove('visible'); cfgModal.setAttribute('aria-hidden','true'); } }
+
+      function populateProfile(){
+        try{
+          const p = JSON.parse(localStorage.getItem('quercus_profile')||'null') || { name:'admin', nick:'admin', avatar: "{{ url_for('static', filename='img/icono_usuario.png') }}" };
+          if(cfgAvatar) cfgAvatar.src = p.avatar;
+          if(cfgName) cfgName.textContent = p.name || '';
+          if(cfgNick) cfgNick.textContent = p.nick || '';
+        }catch(e){ /* ignore */ }
+      }
+
+      if(configBtn) configBtn.addEventListener('click', function(e){ e.stopPropagation(); openConfig(); });
+      // click outside to close
+      if(cfgModal) cfgModal.addEventListener('click', function(ev){ if(ev.target === cfgModal){ closeConfig(); } });
+
+      // -- Calendar renderer --
+      const calRoot = document.getElementById('calendar-root');
+      const eventsListEl = document.getElementById('events-list');
+      // add image preview modal and helper openImagePreview
+      (function(){
+        const preview = document.createElement('div'); preview.id = 'img-preview-modal';
+        preview.setAttribute('role','dialog'); preview.setAttribute('aria-hidden','true');
+        const im = document.createElement('img'); im.id = 'img-preview-img';
+        // fallback area shown when image fails to load
+        const imFallback = document.createElement('div'); imFallback.id = 'img-preview-fallback';
+        imFallback.style.display='none'; imFallback.style.padding='12px 16px'; imFallback.style.background='rgba(0,0,0,0.7)'; imFallback.style.color='#fff'; imFallback.style.borderRadius='8px'; imFallback.style.maxWidth='86%'; imFallback.style.textAlign='center'; imFallback.style.fontWeight='700'; imFallback.style.zIndex='22001';
+        imFallback.innerHTML = 'Cargando...';
+        preview.appendChild(im);
+        preview.appendChild(imFallback);
+        preview.addEventListener('click', function(ev){ if(ev.target === preview){ preview.classList.remove('visible'); preview.setAttribute('aria-hidden','true'); preview.querySelector('img').src=''; } });
+        document.body.appendChild(preview);
+        // create a small toast element for fallback messages
+        const _toast = document.createElement('div'); _toast.id = 'qc-toast'; _toast.style.position='fixed'; _toast.style.left='50%'; _toast.style.transform='translateX(-50%)'; _toast.style.bottom='22px'; _toast.style.padding='10px 14px'; _toast.style.background='rgba(0,0,0,0.8)'; _toast.style.color='#fff'; _toast.style.borderRadius='10px'; _toast.style.fontWeight='700'; _toast.style.fontSize='13px'; _toast.style.zIndex='22000'; _toast.style.display='none'; document.body.appendChild(_toast);
+        function showToast(html, timeout=6000){ try{ const t = document.getElementById('qc-toast'); if(!t) return; t.innerHTML = html; t.style.display='block'; t.style.opacity='1'; if(timeout>0){ setTimeout(()=>{ try{ t.style.display='none'; t.innerHTML=''; }catch(_){} }, timeout); } }catch(e){} }
+
+        // small on-screen debug indicator (shows briefly when preview is triggered)
+        const _dbg = document.createElement('div'); _dbg.id='qc-debug'; _dbg.style.position='fixed'; _dbg.style.top='12px'; _dbg.style.right='12px'; _dbg.style.background='rgba(0,0,0,0.7)'; _dbg.style.color='#fff'; _dbg.style.padding='8px 10px'; _dbg.style.borderRadius='8px'; _dbg.style.fontWeight='700'; _dbg.style.zIndex='23000'; _dbg.style.display='none'; document.body.appendChild(_dbg);
+        function showDebug(msg, timeout=1800){ try{ const d = document.getElementById('qc-debug'); if(!d) return; d.textContent = msg; d.style.display='block'; setTimeout(()=>{ try{ d.style.display='none'; d.textContent=''; }catch(_){} }, timeout); }catch(e){} }
+
+        window.openImagePreview = function(src){
+          try{
+            console.log('openImagePreview called', src);
+            showDebug('Preview: ' + (src? 'intentando cargar' : 'sin src'));
+            const pr = document.getElementById('img-preview-modal');
+            const imgel = pr && pr.querySelector('#img-preview-img');
+            // if modal not present, fallback to open tab and show toast with clickable link
+            if(!pr || !imgel){
+              if(src){
+                const newWin = window.open(src, '_blank', 'noopener,noreferrer');
+                if(!newWin){
+                  showToast(`No se pudo abrir la vista previa automáticamente. <a href="${src}" target="_blank" rel="noopener noreferrer" style="color:#ffd6d6;text-decoration:underline">Abrir imagen</a>`, 0);
+                }
+              }
+              return;
+            }
+            if(!src){
+              showToast('Imagen no disponible', 3000);
+              return;
+            }
+            // prepare handlers and show modal
+            imgel.style.display = 'none';
+            imFallback.style.display = 'block';
+            imFallback.innerHTML = 'Cargando...';
+            imgel.onload = function(){ try{ console.log('img-preview loaded', src); imgel.style.display='block'; imFallback.style.display='none'; }catch(_){} };
+            imgel.onerror = function(){ try{ console.warn('img-preview load error', src); imgel.style.display='none'; imFallback.innerHTML = `No se pudo cargar la imagen. <a href="${src}" target="_blank" rel="noopener noreferrer" style="color:#ffd6d6;text-decoration:underline">Abrir imagen</a>`; imFallback.style.display='block'; }catch(_){} };
+            imgel.src = src || '';
+            pr.classList.add('visible');
+            pr.setAttribute('aria-hidden','false');
+          }catch(e){
+            console.warn('openImagePreview', e);
+            try{
+              const newWin = src ? window.open(src, '_blank', 'noopener,noreferrer') : null;
+              if(!newWin){ showToast(`No se pudo abrir la imagen automáticamente. <a href="${src}" target="_blank" rel="noopener noreferrer" style="color:#ffd6d6;text-decoration:underline">Abrir imagen</a>`, 0); }
+            }catch(_){}
+          }
+        };
+        // close on Escape
+        document.addEventListener('keydown', function(ev){ try{ const pr = document.getElementById('img-preview-modal'); if(!pr) return; if(pr.classList.contains('visible') && ev.key==='Escape'){ pr.classList.remove('visible'); pr.setAttribute('aria-hidden','true'); pr.querySelector('img').src=''; } }catch(e){} });
+        // add full event-card modal (one-by-one preview)
+        const evModal = document.createElement('div'); evModal.id = 'event-card-modal'; evModal.className = 'event-card-modal';
+        evModal.innerHTML = `
+          <div class="ecm-backdrop" id="ecm-backdrop"></div>
+          <div class="ecm-card" role="dialog" aria-modal="true">
+            <button class="ecm-close" aria-label="Cerrar">✕</button>
+            <div class="ecm-header">
+              <div>
+                <div class="ecm-badge">SEDE</div>
+                <div class="ecm-faculty" style="margin-top:6px;font-size:12px;opacity:0.9"></div>
+                <div style="margin-top:6px;display:flex;gap:8px;align-items:center">
+                  <div class="ecm-counter" style="font-weight:700;font-size:13px;opacity:0.95"></div>
+                  <div class="ecm-dots" style="display:flex;gap:6px"></div>
+                </div>
+              </div>
+              <div class="ecm-skyline"></div>
+            </div>
+            <div class="ecm-body">
+              <div class="ecm-meta"><div class="ecm-date"></div><div class="ecm-time"></div></div>
+              <h2 class="ecm-title"></h2>
+              <div class="ecm-image-wrap"></div>
+              <p class="ecm-desc"></p>
+              <div class="ecm-extra" style="margin-top:8px;display:flex;gap:8px;flex-wrap:wrap">
+                <div class="ecm-type" style="background:rgba(255,255,255,0.06);padding:6px 10px;border-radius:8px;font-weight:700;font-size:13px"></div>
+                <div class="ecm-cost" style="background:rgba(255,255,255,0.06);padding:6px 10px;border-radius:8px;font-weight:700;font-size:13px"></div>
+                <div class="ecm-price" style="background:rgba(255,255,255,0.06);padding:6px 10px;border-radius:8px;font-weight:700;font-size:13px"></div>
+              </div>
+            </div>
+            <div class="ecm-footer"><div class="ecm-place"></div></div>
+            <button class="ecm-prev" aria-label="Anterior">‹</button>
+            <button class="ecm-next" aria-label="Siguiente">›</button>
+          </div>`;
+        document.body.appendChild(evModal);
+      })();
+
+      function loadEventsFromStorage(){ try{ return JSON.parse(localStorage.getItem('quercus_events')||'[]'); }catch(e){ return []; } }
+      function getEventsForDate(y,m,d){ const arr = loadEventsFromStorage(); const mm = String(m+1).padStart(2,'0'); const dd = String(d).padStart(2,'0'); const key = `${y}-${mm}-${dd}`; return arr.filter(it => (it.date||'') === key); }
+      // WebAudio click sound setup
+      let audioCtx = null;
+      function playClickSound(){
+        try{
+          if(!audioCtx){ audioCtx = new (window.AudioContext || window.webkitAudioContext)(); }
+          const ctx = audioCtx;
+          const o = ctx.createOscillator();
+          const g = ctx.createGain();
+          o.type = 'sine';
+          o.frequency.value = 880; // A5 tone
+          g.gain.value = 0;
+          o.connect(g); g.connect(ctx.destination);
+          const now = ctx.currentTime;
+          g.gain.linearRampToValueAtTime(0.0001, now);
+          g.gain.exponentialRampToValueAtTime(0.15, now + 0.001);
+          g.gain.exponentialRampToValueAtTime(0.0001, now + 0.18);
+          o.start(now);
+          o.stop(now + 0.2);
+        }catch(e){ /* ignore in unsupported env */ }
+      }
+      function renderCalendar(root, year, month){
+        // month: 0-11
+        if(!root) return;
+        root.innerHTML = '';
+        const container = document.createElement('div');
+        container.style.width = '100%';
+        container.style.display = 'flex';
+        container.style.flexDirection = 'column';
+        container.style.alignItems = 'center';
+
+        const header = document.createElement('div');
+        header.style.display='flex'; header.style.alignItems='center'; header.style.justifyContent='space-between'; header.style.width='100%'; header.style.maxWidth='640px'; header.style.marginBottom='10px';
+
+        const title = document.createElement('div');
+        title.style.fontWeight='800'; title.style.fontSize='18px'; title.style.fontFamily="'DynaPuff',cursive";
+        const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        title.textContent = `${monthNames[month]} ${year}`;
+
+        const nav = document.createElement('div');
+        nav.style.display='flex'; nav.style.gap='8px';
+        const prevBtn = document.createElement('button'); prevBtn.className='btn-no'; prevBtn.textContent = '<';
+        const nextBtn = document.createElement('button'); nextBtn.className='btn-no'; nextBtn.textContent = '>';
+        nav.appendChild(prevBtn); nav.appendChild(nextBtn);
+        header.appendChild(title); header.appendChild(nav);
+
+        // grid
+        const grid = document.createElement('div');
+        grid.style.display='grid'; grid.style.gridTemplateColumns='repeat(7, 1fr)'; grid.style.gap='6px'; grid.style.width='100%'; grid.style.maxWidth='640px';
+
+        // week day headers
+        const days = ['Lun','Mar','Mié','Jue','Vie','Sáb','Dom'];
+        days.forEach(d=>{ const c=document.createElement('div'); c.textContent=d; c.style.fontWeight='700'; c.style.textAlign='center'; c.style.padding='6px 0'; c.style.background='transparent'; grid.appendChild(c); });
+
+        // first day of month
+        const first = new Date(year, month, 1);
+        const startWeekday = (first.getDay() + 6) % 7; // convert Sunday=0 to end
+        const daysInMonth = new Date(year, month+1, 0).getDate();
+
+        // fill blanks
+        for(let i=0;i<startWeekday;i++){ const e=document.createElement('div'); e.textContent=''; e.style.padding='14px 6px'; grid.appendChild(e); }
+
+        const today = new Date(); const todayKey = `${today.getFullYear()}-${today.getMonth()}-${today.getDate()}`;
+
+        // load persisted selection for this calendar view (if any)
+        let persisted = null;
+        try{ const raw = localStorage.getItem('quercus_cal_selected'); if(raw) persisted = JSON.parse(raw); }catch(e){}
+
+        for(let d=1; d<=daysInMonth; d++){
+          const cell = document.createElement('div');
+          cell.textContent = d;
+          cell.className = 'cal-cell';
+          const key = `${year}-${month}-${d}`;
+          if(key===todayKey){ cell.classList.add('today'); }
+          // show marker (dot) or numeric badge if events exist
+          try{
+            const evs = getEventsForDate(year, month, d);
+            if(evs && evs.length>0){
+              if(evs.length === 1){
+                const dot = document.createElement('div'); dot.className='cal-dot'; cell.appendChild(dot);
+              } else {
+                const badge = document.createElement('div'); badge.className = 'cal-badge'; badge.textContent = evs.length;
+                cell.appendChild(badge);
+              }
+            }
+          }catch(e){}
+          // if persisted selection matches this date, mark persistently
+          try{ if(persisted && Number(persisted.y)===year && Number(persisted.m)===month && Number(persisted.d)===d){ cell.classList.add('cal-selected-persist'); showSelected && showSelected(`${d} ${monthNames[month]} ${year}`); } }catch(e){}
+          cell.addEventListener('click', function(){
+            // play friendly pop animation and briefly highlight
+            try{
+              // trigger animation
+              cell.classList.remove('pop');
+              // force reflow to restart animation
+              void cell.offsetWidth;
+              cell.classList.add('pop');
+              cell.classList.add('cal-selected');
+              // remove selection highlight after animation
+              setTimeout(()=>{ try{ cell.classList.remove('cal-selected'); }catch(e){} }, 600);
+              cell.addEventListener('animationend', function ae(){ cell.classList.remove('pop'); cell.removeEventListener('animationend', ae); });
+            }catch(err){ /* ignore */ }
+            // play click sound
+            try{ playClickSound(); }catch(e){}
+            // persist selection: remove previous persistent marker, add to this cell and save
+            try{
+              const prev = root.querySelector('.cal-selected-persist'); if(prev) prev.classList.remove('cal-selected-persist');
+              cell.classList.add('cal-selected-persist');
+              try{ localStorage.setItem('quercus_cal_selected', JSON.stringify({ y: year, m: month, d: d })); }catch(e){}
+            }catch(e){}
+            // small feedback: show selected below
+            showSelected && showSelected(`${d} ${monthNames[month]} ${year}`);
+            // show events list for this date (if any) and open full-card modal if events exist
+            try{ 
+              showEventsForDate(year, month, d);
+              const evs = getEventsForDate(year, month, d);
+              if(evs && evs.length>0){ openEventModal(evs, 0); }
+            }catch(e){}
+          });
+          grid.appendChild(cell);
+        }
+
+        container.appendChild(header);
+        container.appendChild(grid);
+
+        // selected display
+        const selectedBox = document.createElement('div'); selectedBox.style.marginTop='12px'; selectedBox.style.fontWeight='700'; selectedBox.style.color='#333'; selectedBox.style.minHeight='20px';
+        function showSelected(text){ selectedBox.textContent = text || ''; }
+        container.appendChild(selectedBox);
+
+        root.appendChild(container);
+
+        // navigation
+        prevBtn.addEventListener('click', function(){ const m = month-1; if(m<0){ renderCalendar(root, year-1, 11); } else { renderCalendar(root, year, m); } });
+        nextBtn.addEventListener('click', function(){ const m = month+1; if(m>11){ renderCalendar(root, year+1, 0); } else { renderCalendar(root, year, m); } });
+      }
+
+      // init calendar to current month
+      try{ const now = new Date(); renderCalendar(calRoot, now.getFullYear(), now.getMonth()); }catch(e){ console.warn('calendar init', e); }
+
+      // show events list panel for a given date
+      function showEventsForDate(y,m,d){
+        try{
+          const evs = getEventsForDate(y,m,d);
+          if(!eventsListEl) return;
+          const slider = eventsListEl.querySelector('.ev-slider');
+          const track = eventsListEl.querySelector('.ev-track');
+          const prevBtn = eventsListEl.querySelector('.ev-prev');
+          const nextBtn = eventsListEl.querySelector('.ev-next');
+          if(!evs || evs.length===0){ eventsListEl.style.display='none'; if(track) track.innerHTML=''; return; }
+
+          eventsListEl.style.display='block';
+          if(track) track.innerHTML = '';
+
+          evs.forEach(e=>{
+            const card = document.createElement('div'); card.className='ev-card';
+            // thumbnail or placeholder when no image (remueve logo por defecto)
+            let thumbEl = null;
+            if(e.image){
+              // create a wrapper so we can place a + button overlay
+              const wrap = document.createElement('div'); wrap.className = 'ev-thumb-wrap';
+              thumbEl = document.createElement('img'); thumbEl.className='ev-thumb'; thumbEl.alt = e.name || 'imagen'; thumbEl.src = e.image;
+              // clicking the image opens preview (existing behavior)
+              thumbEl.addEventListener('click', function(){ try{ const pm = document.getElementById('img-preview-modal'); if(pm){ pm.querySelector('img').src = thumbEl.src; pm.classList.add('visible'); } }catch(err){} });
+              wrap.appendChild(thumbEl);
+              // plus button overlay
+              const zoomBtn = document.createElement('button'); zoomBtn.className = 'img-zoom-btn'; zoomBtn.title = 'Ver imagen'; zoomBtn.type='button'; zoomBtn.setAttribute('aria-label','Ver imagen');
+              zoomBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+                zoomBtn.addEventListener('click', function(ev){ ev.stopPropagation(); try{ const imgEl = wrap.querySelector && wrap.querySelector('img') ? wrap.querySelector('img') : null; const src = imgEl ? imgEl.src : (wrap.src||''); console.log('ev thumb zoom clicked', src);
+                  // try to open a blank window immediately (user gesture) to avoid popup blocking for later navigation
+                  try{ const w = window.open('about:blank', '_blank'); if(w && src) { try{ w.location = src; }catch(_){ /* navigation might fail for data: urls, we'll handle in preview */ } } }catch(_){ }
+                  window.openImagePreview(src);
+                }catch(err){ console.warn(err); } });
+              wrap.appendChild(zoomBtn);
+              thumbEl = wrap;
+            } else {
+              thumbEl = document.createElement('div'); thumbEl.className = 'ev-placeholder';
+              // show initials or calendar icon
+              try{
+                const names = (e.name||'Evento').split(' ');
+                let initials = names[0].charAt(0) || 'E';
+                if(names.length>1) initials += names[1].charAt(0);
+                thumbEl.textContent = initials.toUpperCase();
+              }catch(_){ thumbEl.textContent = 'EV'; }
+            }
+            const meta = document.createElement('div'); meta.className='ev-meta';
+            const title = document.createElement('h4'); title.textContent = e.name || 'Evento'; meta.appendChild(title);
+            const p1 = document.createElement('div'); p1.textContent = `${e.time||''} · ${e.date||''} · ${e.faculty||''} · ${e.place||''}`; meta.appendChild(p1);
+            const p2 = document.createElement('div'); p2.textContent = `Tipo: ${e.type||'N/A'} · Costo: ${e.cost||'gratuito'} ${e.price? '· Precio: ' + e.price : ''}`; meta.appendChild(p2);
+            if(e.description){ const dd = document.createElement('div'); dd.style.marginTop='8px'; dd.textContent = e.description; meta.appendChild(dd); }
+            card.appendChild(thumbEl); card.appendChild(meta);
+            if(track) track.appendChild(card); else eventsListEl.appendChild(card);
+          });
+
+          // show nav buttons only if more than one
+          if(evs.length > 1){ if(prevBtn) prevBtn.style.display='flex'; if(nextBtn) nextBtn.style.display='flex'; }
+          else { if(prevBtn) prevBtn.style.display='none'; if(nextBtn) nextBtn.style.display='none'; }
+
+          // navigation behaviour
+          if(track){
+            // compute card scroll width when first card is available
+            function cardScroll(){ const first = track.querySelector('.ev-card'); if(!first) return Math.max(track.clientWidth, 320); const compStyle = window.getComputedStyle(track); const gap = parseInt(compStyle.gap||12); return first.offsetWidth + gap; }
+            if(prevBtn){ prevBtn.onclick = () => { track.scrollBy({ left: -cardScroll(), behavior: 'smooth' }); }; }
+            if(nextBtn){ nextBtn.onclick = () => { track.scrollBy({ left: cardScroll(), behavior: 'smooth' }); }; }
+
+            // basic touch/drag support
+            let isDown=false, startX=0, scrollLeft=0;
+            track.addEventListener('pointerdown', function(e){ isDown=true; track.setPointerCapture(e.pointerId); startX = e.clientX; scrollLeft = track.scrollLeft; });
+            track.addEventListener('pointermove', function(e){ if(!isDown) return; const x = e.clientX; const walk = startX - x; track.scrollLeft = scrollLeft + walk; });
+            track.addEventListener('pointerup', function(e){ isDown=false; try{ track.releasePointerCapture && track.releasePointerCapture(e.pointerId); }catch(_){} });
+            track.addEventListener('pointercancel', function(e){ isDown=false; });
+          }
+
+        }catch(err){ console.warn('showEventsForDate', err); }
+      }
+      // --- Event modal control ---
+      function openEventModal(evs, index){
+        try{
+          const modal = document.getElementById('event-card-modal'); if(!modal) return;
+          modal.style.display = 'flex';
+          const card = modal.querySelector('.ecm-card');
+          // store reference to events on modal to ensure prev/next always has access
+          modal._evs = evs.slice ? evs.slice() : (evs || []);
+          modal.dataset.index = index || 0;
+          modal.dataset.count = modal._evs.length || 0;
+          renderModalEvent(null, index || 0);
+          // attach controls
+          const closeBtn = modal.querySelector('.ecm-close');
+          const prev = modal.querySelector('.ecm-prev');
+          const next = modal.querySelector('.ecm-next');
+          closeBtn.onclick = ()=> closeEventModal();
+          // ensure previous handlers are reset before assigning
+          prev.onclick = null; next.onclick = null;
+          prev.onclick = ()=> { const i = Math.max(0, Number(modal.dataset.index)-1); modal.dataset.index = i; renderModalEvent(null, i); };
+          next.onclick = ()=> { const i = Math.min(modal._evs.length-1, Number(modal.dataset.index)+1); modal.dataset.index = i; renderModalEvent(null, i); };
+          // backdrop click closes
+          modal.querySelector('#ecm-backdrop').onclick = ()=> closeEventModal();
+          // keyboard
+          function kHandler(ev){ if(ev.key==='Escape') closeEventModal(); if(ev.key==='ArrowLeft') prev.click(); if(ev.key==='ArrowRight') next.click(); }
+          document.addEventListener('keydown', kHandler);
+          modal.dataset.keyHandler = kHandler;
+          // swipe support
+          const wrap = modal.querySelector('.ecm-card');
+          let sx=0, sy=0, down=false;
+          // ignore pointer gestures started on control buttons
+          wrap.addEventListener('pointerdown', function(ev){ if(ev.target.closest && ev.target.closest('.ecm-prev, .ecm-next, .ecm-close')) return; down=true; sx=ev.clientX; try{ wrap.setPointerCapture && wrap.setPointerCapture(ev.pointerId); }catch(_){} });
+          wrap.addEventListener('pointermove', function(ev){ if(!down) return; const dx = ev.clientX - sx; if(Math.abs(dx) > 80){ if(dx>0) prev.click(); else next.click(); down=false; } });
+          wrap.addEventListener('pointerup', function(ev){ down=false; try{ wrap.releasePointerCapture && wrap.releasePointerCapture(ev.pointerId); }catch(_){} });
+        }catch(e){ console.warn('openEventModal', e); }
+      }
+      function renderModalEvent(evs, idx){
+        try{
+          const modal = document.getElementById('event-card-modal'); if(!modal) return;
+          const list = modal._evs || evs || [];
+          const i = Number(idx || modal.dataset.index || 0);
+          const e = list[i]; if(!e) return;
+          modal.dataset.index = i;
+          // show 'SEDE: <campus>' clearly and faculty separately
+          modal.querySelector('.ecm-badge').textContent = `SEDE: ${ (e.campus || e.sede || 'Principal') }`;
+          try{ const facEl = modal.querySelector('.ecm-faculty'); if(facEl) facEl.textContent = (e.faculty ? 'Facultad: ' + e.faculty : ''); }catch(_){}
+          modal.querySelector('.ecm-date').textContent = e.date||'';
+          modal.querySelector('.ecm-time').textContent = e.time||'';
+          modal.querySelector('.ecm-title').textContent = e.name||'Evento';
+          const wrap = modal.querySelector('.ecm-image-wrap'); wrap.innerHTML = '';
+          if(e.image){ const im = document.createElement('img'); im.src = e.image; wrap.appendChild(im);
+            // add zoom button to modal image area
+            const zb = document.createElement('button'); zb.className = 'img-zoom-btn'; zb.type='button'; zb.title='Ver imagen'; zb.setAttribute('aria-label','Ver imagen');
+            zb.innerHTML = '<svg width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg" aria-hidden="true"><path d="M21 21l-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/><path d="M11 18a7 7 0 1 0 0-14 7 7 0 0 0 0 14z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>';
+            zb.addEventListener('click', function(ev){ ev.stopPropagation(); try{ console.log('modal image zoom clicked', im.src);
+              try{ const w2 = window.open('about:blank', '_blank'); if(w2 && im.src){ try{ w2.location = im.src; }catch(_){ } } }catch(_){ }
+              window.openImagePreview(im.src);
+            }catch(err){} });
+            // position inside wrap (wrap == ecm-image-wrap)
+            wrap.style.position = 'relative'; wrap.appendChild(zb);
+          } else { /* keep empty bg */ }
+          modal.querySelector('.ecm-desc').textContent = e.description || '';
+          modal.querySelector('.ecm-place').textContent = `LUGAR: ${e.place||''}`;
+          // extra fields: type, cost, price
+          try{ const typeEl = modal.querySelector('.ecm-type'); if(typeEl) typeEl.textContent = (e.type||'').toUpperCase(); }catch(_){}
+          try{ const costEl = modal.querySelector('.ecm-cost'); if(costEl) costEl.textContent = (e.cost? e.cost.toUpperCase() : 'GRATUITO'); }catch(_){}
+          try{ const priceEl = modal.querySelector('.ecm-price'); if(priceEl) priceEl.textContent = (e.price? 'Precio: ' + e.price : ''); }catch(_){}
+          // counter
+          try{ const counter = modal.querySelector('.ecm-counter'); if(counter) counter.textContent = `${i+1} / ${list.length || 1}`; }catch(_){}
+          // dots
+          try{
+            const dotsWrap = modal.querySelector('.ecm-dots'); if(dotsWrap){ dotsWrap.innerHTML = ''; for(let k=0;k<list.length;k++){ const d = document.createElement('div'); d.className='dot'; if(k===i) d.classList.add('active'); d.dataset.index = k; d.onclick = ()=> { modal.dataset.index = k; renderModalEvent(null, k); }; dotsWrap.appendChild(d); } }
+          }catch(_){}
+          // show/hide nav buttons
+          const prev = modal.querySelector('.ecm-prev'); const next = modal.querySelector('.ecm-next');
+          if(list.length <= 1){ prev.style.display='none'; next.style.display='none'; } else { prev.style.display='block'; next.style.display='block'; }
+        }catch(e){ console.warn('renderModalEvent', e); }
+      }
+      function closeEventModal(){ try{ const modal = document.getElementById('event-card-modal'); if(!modal) return; modal.style.display='none'; const kh = modal.dataset.keyHandler; if(kh) document.removeEventListener('keydown', kh); }catch(e){ } }
+    })();
+  </script>
+</body>
+</html>

@@ -1,0 +1,485 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Alertas - Quercus</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <!-- DynaPuff font -->
+  <link href="https://fonts.googleapis.com/css2?family=Dynapuff:wght@400;700;800&display=swap" rel="stylesheet">
+  <style>
+    /* Apply DynaPuff as the main font for this page */
+    :root{ --main-font: 'Dynapuff', cursive; }
+    body, body * { font-family: var(--main-font) !important; }
+    /* Ensure form controls look good with the decorative font */
+    input, select, textarea, button { font-family: var(--main-font) !important; }
+
+    /* Copiado de eventos.html para mantener la misma apariencia y comportamiento */
+    body.menu-page { text-align: center; }
+    .events-container{max-width:1100px;margin:80px auto;padding:10px}
+    .events-grid{display:flex;flex-direction:column;gap:18px;align-items:stretch}
+  .events-grid-top, .events-grid-bottom{display:grid;gap:18px}
+  .events-grid-top{grid-template-columns:repeat(4,1fr);}
+  .events-grid-bottom{grid-template-columns:repeat(5,1fr);}
+  .event-card{text-align:center;padding:8px;position:relative}
+  .event-thumb{width:120px;height:120px;border-radius:22px;object-fit:cover;display:block;margin:0 auto 12px;box-shadow:0 8px 20px rgba(0,0,0,0.12);transition:transform .18s ease,box-shadow .18s ease;transform-origin:center}
+  .event-card:hover .event-thumb{transform:scale(1.08);box-shadow:0 18px 40px rgba(0,0,0,0.18)}
+  .event-label{font-weight:700;position:static;display:inline-block;margin-top:8px;background:transparent;color:#111;padding:6px 10px;border-radius:8px;z-index:2;white-space:nowrap}
+  .event-header-icon{width:96px;height:auto;display:block;margin:0 auto 12px}
+  /* Ensure header icon and page title sit above background/decoration */
+  .event-header-icon, .events-container h2{position:relative;z-index:10010}
+  .events-link-icon{width:150px;height:auto;margin-left:12px;vertical-align:middle;cursor:pointer;transition:transform .14s ease}
+  .events-link-icon:hover{transform:scale(1.06)}
+    .topbar-spacer{height:56px}
+    .user-icon{ width:56px; height:auto; border-radius:8px; transition: transform .15s ease }
+    .user-icon:hover{ transform: scale(1.08) }
+
+    .profile-panel{position:fixed;top:56px;right:18px;z-index:10010;pointer-events:none}
+    .profile-outer{background:#2f2f2f;border-radius:22px;padding:10px;box-shadow:0 14px 38px rgba(0,0,0,0.25);pointer-events:auto}
+    .profile-inner{background:#fff;border-radius:14px;padding:12px 14px;width:220px;position:relative}
+    .profile-close{position:absolute;right:8px;top:6px;border:0;background:#e74c3c;color:#fff;width:28px;height:28px;border-radius:6px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+    .profile-avatar-wrap{text-align:center;margin-top:6px}
+    .profile-avatar-bottom{margin-top:10px}
+    .profile-avatar{width:86px;height:86px;border-radius:50%;display:inline-block}
+    .avatar-list{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+    .avatar-thumb{width:44px;height:44px;border-radius:8px;cursor:pointer;border:2px solid transparent;transition:transform .12s ease,border-color .12s ease}
+    .avatar-thumb:hover{transform:translateY(-3px)}
+    .avatar-thumb.selected{border-color:var(--primary, #8c75e6)}
+    .profile-text{margin-top:10px;text-align:left}
+    .profile-row{display:flex;flex-direction:column;align-items:center;margin-bottom:8px}
+    .profile-row strong{font-size:12px;color:#333;margin-bottom:6px}
+    .profile-row div{font-size:13px;color:#111}
+    .editable{background:#f7f7f9;border-radius:8px;padding:6px 8px;min-width:140px;text-align:center}
+    .profile-panel.hidden{opacity:0;transform:translateY(-6px) scale(.98);transition:all .14s ease}
+    .profile-panel.open{opacity:1;transform:none}
+    .logout-btn{background:#ff4757;color:#fff;border:0;padding:8px 14px;border-radius:10px;font-weight:700;cursor:pointer}
+    .logout-btn:hover{background:#ff6b78}
+    .logout-modal{position:fixed;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:11000;visibility:hidden;opacity:0;transition:opacity .12s ease}
+    .logout-modal.visible{visibility:visible;opacity:1;background:rgba(0,0,0,0.45)}
+    .logout-box{background:#fff;border-radius:14px;padding:18px 18px;max-width:360px;width:90%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,0.3)}
+    .logout-box .modal-logo{width:64px;margin-bottom:10px}
+    .logout-box p{font-weight:700;margin:6px 0 12px}
+    .modal-actions{display:flex;gap:10px;justify-content:center}
+    .btn-yes{background:#e74c3c;color:#fff;border:0;padding:8px 14px;border-radius:10px;cursor:pointer;font-weight:700;transition:background .12s ease, transform .12s ease}
+    .btn-yes:hover{background:#ff6b6b;transform:translateY(-2px)}
+    .btn-no{background:#f0f0f0;color:#333;border:0;padding:8px 14px;border-radius:10px;cursor:pointer;transition:background .12s ease, transform .12s ease}
+    .btn-no:hover{background:#e6e6e6;transform:translateY(-2px)}
+  /* coming-soon modal styles */
+  .coming-modal{position:fixed;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:12000;visibility:hidden;opacity:0;transition:opacity .12s ease}
+  .coming-modal.visible{visibility:visible;opacity:1;background:rgba(0,0,0,0.45)}
+  .coming-box{background:#fff;border-radius:12px;padding:18px;max-width:520px;width:92%;text-align:center;box-shadow:0 30px 70px rgba(0,0,0,0.3)}
+  .coming-box .coming-logo{width:76px;height:auto;display:block;margin:0 auto 10px}
+  .coming-box p{margin:10px 0;font-weight:600;color:#222}
+  .coming-ok{background:#8c75e6;color:#fff;border:0;padding:10px 16px;border-radius:10px;cursor:pointer;font-weight:700}
+  .coming-ok:hover{transform:translateY(-2px)}
+  /* alertas specific */
+  .alert-info{width:44px;height:44px;display:block;margin:8px auto 12px}
+  .question-pill{display:inline-block;background:#7b7e74;color:#fff;padding:10px 18px;border-radius:20px;font-weight:700;margin:8px auto 18px}
+  /* position the figure relative to the trope-card so it's centered vertically */
+  .trope-card{position:relative}
+  /* Position the decorative figure outside (to the right) of the card on wide screens.
+     Keep it responsive and bring it inside the card on smaller viewports so it never leaves the viewport. */
+  .trope-card .alert-man{
+    position:absolute;
+    right:-260px; /* moved further right as requested */
+    top:50%;
+    transform:translateY(-50%);
+    width:340px;
+    pointer-events:none;
+    max-width:36vw;
+  }
+
+  /* Medium screens: still outside but a bit further */
+  @media (max-width:1200px){
+    .trope-card .alert-man{ right:-180px; max-width:34vw; width:320px; }
+  }
+
+  /* Small screens: keep the figure inside the card area so it doesn't overflow the viewport */
+  @media (max-width:920px){
+    .trope-card .alert-man{ right:8px; max-width:28vw; width:240px; }
+  }
+  main.events-container{position:relative}
+  /* Remove the 'edificio' background only on the alertas page */
+  body.menu-page::before { display: none !important; }
+  /* card like mockup - slightly larger and more spacious */
+  .trope-card{background:#2f2f2f;color:#fff;border-radius:18px;padding:24px 26px;display:block;margin:20px auto 14px;box-shadow:0 20px 60px rgba(0,0,0,0.35);z-index:2;max-width:920px;width:calc(100% - 40px)}
+  /* Header aligned to grid columns: use same grid as rows for perfect alignment */
+  .trope-header{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;max-width:840px;margin:0 auto 12px}
+  .trope-pill{background:#7b7e74;color:#fff;padding:8px 12px;border-radius:18px;font-weight:800;font-size:13px;min-width:92px;text-align:center}
+  /* Grid redesigned: rows per alert, pills for each column (no empty grey boxes) */
+  .trope-grid{display:flex;flex-direction:column;gap:12px;max-width:840px;margin:0 auto;max-height:340px;overflow-y:auto;padding-right:10px}
+  /* Rows use same 4-column grid so pills align under headers */
+  .trope-row{display:grid;grid-template-columns:repeat(4,1fr);gap:12px;align-items:center}
+  /* Use resource color #77796a for pills / inputs */
+  /* smaller pills like horarios: tighter padding and height */
+  .trope-pill{flex:1 1 0;min-height:32px;background:#77796a;color:#fff;border-radius:14px;display:flex;align-items:center;justify-content:center;padding:6px 10px;font-weight:700;font-size:13px}
+  .trope-empty{padding:14px;border-radius:12px;background:rgba(255,255,255,0.02);color:rgba(255,255,255,0.7);text-align:center}
+  /* modern custom scrollbar for the alerts grid */
+  .trope-grid{
+    scrollbar-width: thin;
+    scrollbar-color: #77796a rgba(255,255,255,0.02);
+  }
+  .trope-grid::-webkit-scrollbar{width:10px}
+  .trope-grid::-webkit-scrollbar-track{background:rgba(255,255,255,0.02);border-radius:12px}
+  .trope-grid::-webkit-scrollbar-thumb{background:linear-gradient(180deg,#9aa09a,#6b7560);border-radius:12px;box-shadow:inset 0 0 6px rgba(0,0,0,0.25)}
+  .trope-grid::-webkit-scrollbar-thumb:hover{filter:brightness(.9);transform:scale(1.02)}
+  /* modal form */
+  .modal-overlay{position:fixed;left:0;top:0;width:100%;height:100%;display:none;align-items:center;justify-content:center;background:rgba(0,0,0,0.45);z-index:12000}
+  .modal-overlay.visible{display:flex}
+  .modal-box{background:#fff;border-radius:12px;padding:18px;max-width:520px;width:92%;box-shadow:0 20px 50px rgba(0,0,0,0.25)}
+  .form-row{display:flex;gap:8px;margin-bottom:10px}
+  .form-row input,.form-row select{flex:1;padding:8px;border-radius:8px;border:1px solid #ccc}
+  @media (max-width:720px){ .trope-header,.trope-grid{max-width:92%;grid-template-columns:repeat(2,1fr);} .trope-pill{min-width:80px} }
+    @media (max-width:920px){ .events-grid-top{grid-template-columns:repeat(2,1fr);} .events-grid-bottom{grid-template-columns:repeat(2,1fr);} }
+    @media (max-width:720px){ .event-thumb{width:100px;height:100px} .events-grid-top,.events-grid-bottom{grid-template-columns:1fr} }
+  </style>
+</head>
+<body class="menu-page">
+  <!-- Topbar con user-icon igual al menu -->
+  <div class="topbar-register" style="justify-content:space-between;left:20px;right:20px;width:calc(100% - 40px);position:fixed;top:0;z-index:9998;padding:12px 24px;display:flex;align-items:center;">
+    <div style="display:flex;align-items:center">
+      <img src="{{ url_for('static', filename='img/logo.jpg') }}" class="logo-img" alt="logo">
+      <a href="{{ url_for('menu') }}" title="Volver al menú">
+        <img src="{{ url_for('static', filename='img/eventos/eventos.png') }}" alt="eventos" class="events-link-icon">
+      </a>
+    </div>
+    <img id="user-icon" src="{{ url_for('static', filename='img/icono_usuario.png') }}" class="user-icon" alt="user" style="cursor:pointer">
+  </div>
+
+  <div class="topbar-spacer"></div>
+
+  <!-- PROFILE PANEL -->
+  <div id="profile-panel" class="profile-panel" aria-hidden="true">
+    <div class="profile-outer">
+      <div class="profile-inner">
+        <button id="profile-close" class="profile-close" aria-label="Cerrar">✕</button>
+        <div class="profile-text">
+          <div class="profile-row"><strong>Nombre:</strong><div id="profile-name">admin</div></div>
+          <div class="profile-row"><strong>Apodo:</strong><div id="profile-nick" class="editable" contenteditable="true">admin</div></div>
+          <div class="profile-row"><strong>Correo:</strong><div id="profile-email">admin@gmail.com</div></div>
+        </div>
+        <div class="profile-avatar-wrap profile-avatar-bottom">
+          <img id="profile-avatar" src="{{ url_for('static', filename='img/icono_usuario.png') }}" alt="avatar" class="profile-avatar">
+        </div>
+        <div class="avatar-selector" style="margin-top:10px;text-align:center">
+          <div style="font-weight:700;margin-bottom:6px">Seleccionar avatar</div>
+          <div class="avatar-list">
+            <img src="{{ url_for('static', filename='img/avatares/avatar1.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar1.png') }}" class="avatar-thumb">
+            <img src="{{ url_for('static', filename='img/avatares/avatar2.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar2.png') }}" class="avatar-thumb">
+            <img src="{{ url_for('static', filename='img/avatares/avatar3.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar3.png') }}" class="avatar-thumb">
+            <img src="{{ url_for('static', filename='img/avatares/avatar4.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar4.png') }}" class="avatar-thumb">
+          </div>
+        </div>
+        <div style="text-align:center;margin-top:10px;"><button id="logout-btn" class="logout-btn">Salir</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logout confirmation modal -->
+  <div id="logout-modal" class="logout-modal" aria-hidden="true">
+    <div class="logout-box">
+      <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="logo" class="modal-logo">
+      <p>¿Estás seguro de salir?</p>
+      <div class="modal-actions">
+        <button id="confirm-yes" class="btn-yes">Sí</button>
+        <button id="confirm-no" class="btn-no">No</button>
+      </div>
+    </div>
+  </div>
+  <!-- Coming soon modal -->
+  <div id="coming-modal" class="coming-modal" aria-hidden="true">
+    <div class="coming-box">
+      <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="logo" class="coming-logo">
+      <h3>Próximamente</h3>
+      <p id="coming-msg">Por el momento solo estamos en Bogotá. Prontamente esperamos informar sobre tu sede. Dentro de poco uniremos más a la comunidad UNAL. Disculpa las molestias.</p>
+      <div style="margin-top:12px"><button id="coming-ok" class="coming-ok">Aceptar</button></div>
+    </div>
+  </div>
+  <main class="events-container">
+    <img src="{{ url_for('static', filename='img/icono3.png') }}" alt="icono alertas" class="event-header-icon">
+    <h2>ALERTA DE TROPEL</h2>
+
+    <!-- ícono informativo (alerta1.png) centrado debajo del título -->
+    <img src="{{ url_for('static', filename='img/alertas/alerta1.png') }}" alt="info" class="alert-info">
+
+    <!-- pregunta en estilo pill -->
+    <div style="text-align:center"><span class="question-pill">¿Te gustaría informar sobre un tropel?</span></div>
+
+    <!-- tarjeta tipo tabla (mockup) -->
+    <div style="text-align:center;margin-top:12px;">
+      <div class="trope-card" role="region" aria-label="Formulario rápido de tropeles">
+        <div class="trope-header">
+          <div class="trope-pill">SEDE</div>
+          <div class="trope-pill">LUGAR</div>
+          <div class="trope-pill">FECHA</div>
+          <div class="trope-pill">HORA</div>
+        </div>
+        <div class="trope-grid" aria-live="polite">
+          <div class="trope-empty">No hay alertas registradas. Haz clic en la pregunta para crear una.</div>
+        </div>
+        <!-- figura decorativa (movida dentro del card para centrarla con el cuadro) -->
+        <img src="{{ url_for('static', filename='img/alertas/alertas.png') }}" alt="personaje" class="alert-man">
+    </div>
+    </div>
+    <!-- Modal: form para crear alerta rápida (nuevo diseño) -->
+    <div id="alert-modal" class="modal-overlay" aria-hidden="true">
+      <div class="modal-box" role="dialog" aria-modal="true" aria-labelledby="alert-modal-title" style="max-width:520px;padding:18px;border-radius:14px;background:#2f2f2f;color:#fff;">
+  <div class="modal-handle" style="width:140px;height:18px;background:#77796a;border-radius:12px;margin:6px auto"></div>
+  <h3 id="alert-modal-title" style="text-align:center;margin:4px 0 8px;font-weight:800">CREAR INFO DE TROPEL</h3>
+  <div style="display:flex;flex-direction:column;gap:10px;padding:6px 2px">
+          <label style="font-weight:800">SEDE</label>
+          <select id="alert-sede" style="border-radius:20px;padding:12px;background:#77796a;color:#fff;border:0">
+            <option value="">Selecciona sede</option>
+            <option value="Bogotá">Bogotá</option>
+            <option value="Palmira">Palmira</option>
+            <option value="Medellín">Medellín</option>
+            <option value="Manizales">Manizales</option>
+          </select>
+
+          <label style="font-weight:800">LUGAR</label>
+          <input id="alert-lugar" type="text" placeholder="Lugar libre" style="border-radius:20px;padding:12px;background:#77796a;color:#fff;border:0">
+
+          <label style="font-weight:800">FECHA</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="alert-day" style="border-radius:12px;padding:10px;background:#77796a;color:#fff;border:0;width:88px"></select>
+            <select id="alert-month" style="border-radius:12px;padding:10px;background:#77796a;color:#fff;border:0;flex:1"></select>
+            <select id="alert-year" style="border-radius:12px;padding:10px;background:#77796a;color:#fff;border:0;width:120px"></select>
+          </div>
+
+          <label style="font-weight:800">HORA</label>
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="alert-hour" style="border-radius:12px;padding:10px;background:#77796a;color:#fff;border:0;width:96px"></select>
+            <select id="alert-minute" style="border-radius:12px;padding:10px;background:#77796a;color:#fff;border:0;width:96px"></select>
+          </div>
+          <div id="alert-preview" class="trope-empty" style="margin-top:6px;text-align:center;font-weight:700">Selecciona fecha y hora</div>
+        </div>
+        <div style="display:flex;gap:12px;justify-content:center;margin-top:12px">
+          <button id="alert-create" class="btn-yes" style="background:#c42b2b;border-radius:20px;padding:10px 40px;font-weight:800">CREAR</button>
+          <button id="alert-cancel" class="btn-no" style="border-radius:20px;padding:10px 28px">CANCELAR</button>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    (function(){
+      const userIcon = document.getElementById('user-icon');
+      const panel = document.getElementById('profile-panel');
+      const closeBtn = document.getElementById('profile-close');
+      const nick = document.getElementById('profile-nick');
+
+      const defaultProfile = { name:'admin', nick:'admin', email:'admin@gmail.com', avatar: "{{ url_for('static', filename='img/icono_usuario.png') }}" };
+
+      function load(){
+        try{
+          const p = JSON.parse(localStorage.getItem('quercus_profile')||'null') || defaultProfile;
+          document.getElementById('profile-name').textContent = p.name;
+          nick.textContent = p.nick;
+          document.getElementById('profile-email').textContent = p.email;
+          document.getElementById('profile-avatar').src = p.avatar;
+          try{ if(userIcon) userIcon.src = p.avatar; }catch(e){}
+        }catch(e){ console.warn(e); }
+      }
+
+      function save(){
+        try{
+          const obj = { name: document.getElementById('profile-name').textContent.trim(), nick: nick.textContent.trim(), email: document.getElementById('profile-email').textContent.trim(), avatar: document.getElementById('profile-avatar').src };
+          localStorage.setItem('quercus_profile', JSON.stringify(obj));
+        }catch(e){ console.warn(e); }
+      }
+
+      // avatar selector handling
+      function markSelected(src){
+        const thumbs = document.querySelectorAll('.avatar-thumb');
+        thumbs.forEach(t => { if(t.dataset && t.dataset.src === src) t.classList.add('selected'); else t.classList.remove('selected'); });
+      }
+      const thumbs = document.querySelectorAll('.avatar-thumb');
+      thumbs.forEach(t => {
+        t.addEventListener('click', function(e){
+          e.stopPropagation();
+          const src = this.dataset.src || this.src;
+          document.getElementById('profile-avatar').src = src;
+          try{ if(userIcon) userIcon.src = src; }catch(err){}
+          markSelected(src);
+          save();
+        });
+      });
+
+      function toggle(){ if(panel.classList.contains('open')) close(); else open(); }
+      function open(){ panel.classList.add('open'); panel.classList.remove('hidden'); panel.setAttribute('aria-hidden','false'); }
+      function close(){ panel.classList.remove('open'); panel.classList.add('hidden'); panel.setAttribute('aria-hidden','true'); }
+
+      userIcon.addEventListener('click', function(e){ e.stopPropagation(); toggle(); });
+      closeBtn.addEventListener('click', function(e){ e.stopPropagation(); close(); });
+      document.addEventListener('click', function(ev){ if(!panel.contains(ev.target) && !userIcon.contains(ev.target)) close(); });
+
+      nick.addEventListener('blur', save);
+      nick.addEventListener('keydown', function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); nick.blur(); save(); } });
+
+      panel.classList.add('hidden');
+      load();
+
+      // logout modal handlers
+      const logoutBtn = document.getElementById('logout-btn');
+      const logoutModal = document.getElementById('logout-modal');
+      const confirmYes = document.getElementById('confirm-yes');
+      const confirmNo = document.getElementById('confirm-no');
+
+      logoutBtn && logoutBtn.addEventListener('click', function(e){ e.stopPropagation(); logoutModal.classList.add('visible'); logoutModal.setAttribute('aria-hidden','false'); });
+      confirmNo && confirmNo.addEventListener('click', function(e){ e.stopPropagation(); logoutModal.classList.remove('visible'); logoutModal.setAttribute('aria-hidden','true'); });
+      logoutModal && logoutModal.addEventListener('click', function(ev){ if(ev.target === logoutModal){ logoutModal.classList.remove('visible'); logoutModal.setAttribute('aria-hidden','true'); } });
+      confirmYes && confirmYes.addEventListener('click', function(){ try{ localStorage.removeItem('quercus_profile'); }catch(e){} window.location.href = '/logout'; });
+    })();
+  </script>
+  <script>
+    // Alertas form & rendering (fecha/hora con inputs nativos; filas en lugar de celdas)
+    (function(){
+      const pill = document.querySelector('.question-pill');
+      const modal = document.getElementById('alert-modal');
+      const btnCancel = document.getElementById('alert-cancel');
+      const btnCreate = document.getElementById('alert-create');
+      const key = 'quercus_alerts';
+
+      // hover animation
+      pill && pill.addEventListener('mouseenter', function(){ this.style.transform='translateY(-4px) scale(1.02)'; this.style.transition='transform .18s ease'; });
+      pill && pill.addEventListener('mouseleave', function(){ this.style.transform='none'; });
+      pill && pill.addEventListener('click', function(){ openModal(); });
+
+      function openModal(){ modal.classList.add('visible'); modal.setAttribute('aria-hidden','false'); initForm(); }
+      function closeModal(){ modal.classList.remove('visible'); modal.setAttribute('aria-hidden','true'); }
+
+      btnCancel && btnCancel.addEventListener('click', function(e){ e.preventDefault(); closeModal(); });
+
+      // form elements (select-based date/time like horarios)
+      const sedeEl = document.getElementById('alert-sede');
+      const lugarEl = document.getElementById('alert-lugar');
+      const dayEl = document.getElementById('alert-day');
+      const monthEl = document.getElementById('alert-month');
+      const yearEl = document.getElementById('alert-year');
+      const hourEl = document.getElementById('alert-hour');
+      const minuteEl = document.getElementById('alert-minute');
+
+      function initForm(){
+        populateDateSelects(dayEl, monthEl, yearEl);
+        populateTimeSelects(hourEl, minuteEl);
+        lugarEl.value = ''; sedeEl.value = '';
+        clearValidation(); updatePreview();
+      }
+
+      function updatePreview(){
+        const preview = document.getElementById('alert-preview'); if(!preview) return;
+        const s = sedeEl.value||'[Sede]'; const l = lugarEl.value||'[Lugar]'; const d = dayEl.value; const m = monthEl.value; const y = yearEl.value; const h = hourEl.value; const min = minuteEl.value;
+        if(!d && !m && !y && !h && !min){ preview.textContent = 'Selecciona fecha y hora'; return; }
+        // pretty date
+        let pretty = '';
+        if(d && m && y){ pretty = String(d).padStart(2,'0') + '/' + String(m).padStart(2,'0') + '/' + y; }
+        if(h){ pretty += (pretty? ' ':'') + String(h).padStart(2,'0') + ':' + String(min).padStart(2,'0'); }
+        preview.textContent = `${s} • ${l} • ${pretty}`;
+      }
+
+      function showValidation(el){ if(!el) return; el.style.boxShadow = '0 0 0 4px rgba(196,43,43,0.12)'; el.style.border = '1px solid #c42b2b'; }
+      function clearValidation(){ [sedeEl,lugarEl,dayEl,monthEl,yearEl,hourEl,minuteEl].forEach(e=>{ if(!e) return; e.style.boxShadow='none'; e.style.border='0'; }); }
+
+      btnCreate && btnCreate.addEventListener('click', function(e){
+        e.preventDefault(); clearValidation();
+        const sede = sedeEl.value.trim(); const lugar = lugarEl.value.trim();
+        const day = dayEl.value; const month = monthEl.value; const year = yearEl.value;
+        const hour = hourEl.value; const minute = minuteEl.value;
+        if(!sede){ showValidation(sedeEl); sedeEl.focus(); return; }
+        if(!lugar){ showValidation(lugarEl); lugarEl.focus(); return; }
+        if(!day || !month || !year){ showValidation(dayEl); showValidation(monthEl); showValidation(yearEl); (dayEl||monthEl||yearEl).focus(); return; }
+        if(!hour || !minute){ showValidation(hourEl); showValidation(minuteEl); (hourEl||minuteEl).focus(); return; }
+
+        const fecha = `${String(year)}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}`;
+        const hora = `${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}`;
+
+        // attach a creation timestamp so we can auto-expire after N hours
+        const newItem = {sede,lugar,fecha,hora, createdAt: (new Date()).toISOString() };
+        const arr = JSON.parse(localStorage.getItem(key)||'[]');
+        arr.unshift(newItem); // newest first
+        localStorage.setItem(key, JSON.stringify(arr));
+        closeModal(); renderAlerts();
+        // scroll new item into view smoothly
+        setTimeout(()=>{ const grid = document.querySelector('.trope-grid'); if(grid) grid.scrollTop = 0; }, 120);
+      });
+
+      // live preview updates
+      [sedeEl,lugarEl,dayEl,monthEl,yearEl,hourEl,minuteEl].forEach(el=>{ if(!el) return; el.addEventListener('input', updatePreview); el.addEventListener('change', updatePreview); });
+
+      // populate helpers (copied from horarios)
+      function populateDateSelects(dayEl, monthEl, yearEl){
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const startYear = currentYear - 2;
+        const endYear = currentYear + 5;
+        const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        monthEl.innerHTML = '';
+        monthNames.forEach((m,i)=>{ const opt = document.createElement('option'); opt.value = i+1; opt.textContent = m; monthEl.appendChild(opt); });
+        yearEl.innerHTML = '';
+        for(let y=startYear;y<=endYear;y++){ const opt=document.createElement('option'); opt.value=y; opt.textContent=y; yearEl.appendChild(opt); }
+        function setDays(){ const y = parseInt(yearEl.value,10)||currentYear; const m = parseInt(monthEl.value,10)||1; const days = new Date(y,m,0).getDate(); const prev = parseInt(dayEl.value,10)||1; dayEl.innerHTML = ''; for(let d=1; d<=days; d++){ const o=document.createElement('option'); o.value=d; o.textContent=d; dayEl.appendChild(o); } dayEl.value = Math.min(prev, days); }
+        monthEl.value = now.getMonth()+1; yearEl.value = currentYear; setDays(); dayEl.value = now.getDate();
+        monthEl.addEventListener('change', setDays); yearEl.addEventListener('change', setDays);
+      }
+
+      function populateTimeSelects(hourEl, minuteEl){
+        hourEl.innerHTML = '';
+        for(let h=0; h<24; h++){ const o=document.createElement('option'); const hv=String(h).padStart(2,'0'); o.value=hv; o.textContent=hv; hourEl.appendChild(o); }
+        minuteEl.innerHTML = '';
+        ['00','15','30','45'].forEach(m=>{ const o=document.createElement('option'); o.value=m; o.textContent=m; minuteEl.appendChild(o); });
+        const now = new Date(); let hr = String(now.getHours()).padStart(2,'0'); let min = now.getMinutes(); let rounded = Math.ceil(min/15)*15; if(rounded===60){ rounded=0; hr = String((now.getHours()+1)%24).padStart(2,'0'); }
+        minuteEl.value = String(rounded).padStart(2,'0'); hourEl.value = hr;
+      }
+
+      // expiry: remove alerts older than EXPIRY_MS (3 hours)
+      const EXPIRY_MS = 3 * 60 * 60 * 1000; // 3 hours
+
+      // cleanupExpired returns the kept array (and writes back if something was removed)
+      function cleanupExpired(){
+        try{
+          const raw = JSON.parse(localStorage.getItem(key)||'[]');
+          const now = Date.now();
+          // keep items without createdAt (backwards-compat) and those younger than EXPIRY_MS
+          const kept = raw.filter(item => {
+            if(!item || !item.createdAt) return true;
+            const t = Date.parse(item.createdAt);
+            if(isNaN(t)) return true;
+            return (now - t) <= EXPIRY_MS;
+          });
+          if(kept.length !== (raw? raw.length: 0)){
+            localStorage.setItem(key, JSON.stringify(kept));
+          }
+          return kept || [];
+        }catch(e){ console.warn('cleanupExpired error', e); return JSON.parse(localStorage.getItem(key)||'[]'); }
+      }
+
+      // render into trope-grid as rows (no empty boxes)
+      function renderAlerts(){
+        const grid = document.querySelector('.trope-grid'); if(!grid) return; const arr = cleanupExpired();
+        if(!arr || arr.length===0){ grid.innerHTML = '<div class="trope-empty">No hay alertas registradas. Haz clic en la pregunta para crear una.</div>'; return; }
+  // show up to 100 alerts (grid is scrollable)
+  const rows = arr.slice(0,100).map(a => {
+          return '<div class="trope-row">'
+            + '<div class="trope-pill">'+escapeHtml(a.sede)+'</div>'
+            + '<div class="trope-pill">'+escapeHtml(a.lugar)+'</div>'
+            + '<div class="trope-pill">'+escapeHtml(a.fecha)+'</div>'
+            + '<div class="trope-pill">'+escapeHtml(a.hora)+'</div>'
+            + '</div>';
+        });
+        grid.innerHTML = rows.join('\n');
+      }
+
+      function escapeHtml(str){ return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+  // init
+  // first-pass cleanup (in case there are expired items from previous sessions)
+  cleanupExpired();
+  renderAlerts();
+  // periodically cleanup and refresh the view (every minute)
+  setInterval(function(){ cleanupExpired(); renderAlerts(); }, 60 * 1000);
+      // close modal clicking outside
+      modal && modal.addEventListener('click', function(ev){ if(ev.target===modal) closeModal(); });
+    })();
+  </script>
+</body>
+</html>

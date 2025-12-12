@@ -1,0 +1,556 @@
+body {
+  /*font-family: 'DynaPuff', cursive; */
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  background-color: #fdfdfd;
+  color: #1e1e2f;
+}
+
+body {
+  margin: 0;
+  font-family: 'Poppins', sans-serif;
+  background-color: #fdfdfd;
+  color: #1e1e2f;
+  background-image: url('../img/esquinas.png');
+  background-repeat: no-repeat;
+  background-size: 100% auto;  /* hace que la imagen se adapte al tamaño */
+  background-position: center; /* centra la imagen */
+}
+
+
+
+/* Encabezado */
+.topbar {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 15px 40px;
+ 
+ 
+}
+
+.logo {
+  display: flex;
+  align-items: center;
+}
+
+.logo-img {
+  width: 80px;
+  margin-right: 20px;
+}
+
+.brand {
+  font-weight: 700;
+  font-size: 20px;
+  color: #4b4b80;
+}
+
+.btn-login {
+  background-color: #c769f5;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 14px 28px;
+  font-weight: 600;
+  font-size: 18px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-login:hover {
+  background-color: #8c75e6;
+}
+
+/* Sección principal */
+.hero {
+  display: flex;
+  align-items: center;
+  justify-content: space-around;
+  padding: 60px;
+}
+
+.hero-left {
+  width: 45%;
+  margin-left: 100px; 
+  text-align: left;
+  margin-top: -40px
+}
+
+.hero-left h1 {
+  font-size: 32px;
+  color: #333366;
+}
+
+.hero-left p.sub {
+  font-size: 19px;
+  margin-top: 15px;
+  color: #555;
+  font-weight: 700;
+}
+
+.cta {
+  display: inline-block;
+  background-color: #a18aff;
+  color: white;
+  text-decoration: none;
+  font-weight: 600;
+  padding: 10px 25px;
+  border-radius: 12px;
+  margin-top: 25px;
+  transition: 0.3s;
+}
+
+
+.cta:hover {background-color: #8c75e6;
+color: fff;
+transform: scale(1.05);}
+
+.hero-right img {
+  width: 380px;
+}
+
+
+/* ==== ESQUINAS DECORATIVAS SIN IMÁGENES ==== */
+
+/* contenedor principal para las esquinas 
+body::before,
+body::after {
+  content: "";
+  position: fixed;
+  width: 250px;
+  height: 250px;
+  z-index: 0;
+  opacity: 0.8;
+  pointer-events: none;
+}
+
+/* esquina inferior izquierda - gris pastel */
+/*body::before {
+  background: radial-gradient(circle at bottom left, #c62212 100%, #eaeaea 70%, transparent 100%);
+  bottom: 0;
+  left: 0;
+  border-top-right-radius: 80%;
+  transform: scale(1.1);
+}
+
+/* esquina superior derecha - rojo pastel */
+/*body::after {
+  background: radial-gradient(circle at top right, #77796a 100%, #ffc9c9 70%, transparent 100%);
+  top: 0;
+  right: 0;
+  border-bottom-left-radius: 80%;
+  transform: scale(1.1);
+}*/
+
+/* asegurar que el contenido principal quede encima */
+.topbar, .hero {
+  position: relative;
+  z-index: 1;
+}
+
+@media (max-width: 768px) {
+  .hero-left {
+    margin-left: 0;       /* vuelve al centro en pantallas pequeñas */
+    text-align: center;   /* centra el texto */
+  }
+
+  .cta {
+    margin: 25px auto;    /* centra el botón */
+  }
+}
+
+/* ========================= */
+/*   FORMULARIOS (login, registro, éxito)  */
+/* ========================= */
+
+.login-container, .register-container, .success-container {
+  text-align: center;
+  margin-top: 80px;
+  padding: 40px;
+  /* background: rgba(255,255,255,0.8); */
+  width: 400px;
+  border-radius: 20px;
+  /*box-shadow: 0 4px 15px rgba(0,0,0,0.1); */
+  margin-left: auto;
+  margin-right: auto;
+
+}
+
+.login-container input, .register-container input {
+  display: block;
+  margin: 15px auto;
+  padding: 10px;
+  width: 80%;
+  border-radius: 10px;
+  border: 1px solid #ccc;
+}
+
+.error {
+  color: red;
+  font-weight: bold;
+}
+
+.btn-google {
+  background-color: #db4437;
+  color: white;
+  border: none;
+  padding: 10px 25px;
+  border-radius: 10px;
+  cursor: pointer;
+  margin-top: 10px;
+}
+
+.btn-google:hover {
+  background-color: #c23321;
+}
+
+.success-container p {
+  font-size: 18px;
+  color: #333;
+}
+
+.btn-home {
+  position: fixed;          /* lo mantiene en una posición fija */
+  top: 20px;                /* distancia desde la parte superior */
+  left: 25px;               /* distancia desde la izquierda */
+  z-index: 9999;            /* asegura que esté encima de todo */
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #a18aff;
+  color: white;
+  border: none;
+  border-radius: 12px;
+  padding: 10px 18px;
+  font-weight: 600;
+  font-size: 16px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-family: 'Poppins', sans-serif;
+}
+
+.btn-home:hover {
+  transform: scale(1.1);
+  background-color: #8c75e6;
+  box-shadow: 0 4px 10px rgba(140, 117, 230, 0.5);
+}
+
+.home-icon {
+  font-size: 18px;
+}
+
+
+/* ======== FONDO DOBLE PARA LOGIN ======== */
+body.login-page {
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: none; /* quitamos fondo directo */
+}
+
+/* Fondo de edificio (más atrás) */
+body.login-page::before {
+  content: "";
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 28vh; /* ajusta altura visible del edificio */
+  background-image: url('../img/edificio.png');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: bottom -27px center;
+  z-index: 0; /* más atrás */
+  pointer-events: none;
+}
+
+/* Fondo de esquinas (encima del edificio) */
+body.login-page::after {
+  content: "";
+  position: fixed;
+  top: -47px;
+  left: 0;
+  width: 100%;
+  height: 150%;
+  background-image: url('../img/esquinas.png');
+  background-repeat: no-repeat;
+  background-size: 110% auto;
+  background-position: top center;
+  z-index: 1; /* sobre edificio */
+  pointer-events: none;
+}
+
+/* Contenedor principal del login */
+body.login-page .login-container {
+  position: relative;
+  z-index: 2; /* encima de todo */
+}
+
+/* ======== MENU: usar mismos fondos que login ======== */
+body.menu-page {
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: none;
+}
+
+body.menu-page::before {
+  content: "";
+  position: fixed;
+  bottom: 0;
+  left: 0;
+  width: 100%;
+  height: 28vh;
+  background-image: url('../img/edificio.png');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: bottom -27px center;
+  z-index: 0;
+  pointer-events: none;
+}
+
+body.menu-page::after {
+  content: "";
+  position: fixed;
+  top: -47px;
+  left: 0;
+  width: 100%;
+  height: 150%;
+  background-image: url('../img/esquinas.png');
+  background-repeat: no-repeat;
+  background-size: 110% auto;
+  background-position: top center;
+  z-index: 1;
+  pointer-events: none;
+}
+
+body.menu-page .menu-container { position: relative; z-index: 2; }
+
+
+
+/* ======== ESTILOS REGISTER ======== */
+body.register-page {
+  position: relative;
+  overflow-x: hidden;
+  overflow-y: auto;
+  background: none;
+  font-family: 'Poppins', sans-serif;
+}
+
+/* Fondo edificio */
+body.register-page::before {
+  content: "";
+  position: fixed;
+  bottom: -30px;
+  left: 0;
+  width: 100%;
+  height: 30vh; /* igual que login */
+  background-image: url('../img/edificio.png');
+  background-repeat: no-repeat;
+  background-size: cover;
+  background-position: bottom -27px center; /* mismo desplazamiento que en login */
+  z-index: 0; /* más atrás */
+  pointer-events: none;
+}
+
+/* Fondo esquinas */
+body.register-page::after {
+  content: "";
+  position: fixed;
+  top: -130px;
+  left: 0;
+  width: 100%;
+  height: 140%;
+  background-image: url('../img/esquinas.png');
+  background-repeat: no-repeat;
+  background-size: 105% auto; /* mantiene proporción horizontal como en login */
+  background-position: top center;
+  z-index: 1;
+  pointer-events: none; /* que no interfiera con elementos sobrepuestos */
+}
+
+/* Topbar */
+.topbar-register {
+  position: fixed; 
+  top: 15px; 
+  left: 20px; 
+  display: flex; 
+  align-items: center; 
+  gap: 12px; 
+  z-index: 9999; 
+  /* Hacemos la topbar transparente para que la imagen de esquinas se vea como en login */
+  background: transparent;
+  padding: 6px 8px;
+  border-radius: 10px; 
+  box-shadow: none;
+}
+
+.logo-img {
+  width: 60px; 
+  height: auto; 
+  border-radius: 8px; 
+  display: block; 
+}
+
+/* Botón inicio */
+.btn-home {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  background-color: #00c853;
+  color: white;
+  border: none;
+  padding: 8px 18px;
+  border-radius: 10px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  font-size: 16px;
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15);
+}
+
+.btn-home:hover {
+  background-color: #00b64d;
+  transform: scale(1.05);
+}
+
+.home-icon {
+  font-size: 18px;
+}
+
+/* Contenedor formulario */
+.register-container {
+  position: relative; 
+  z-index: 2; 
+  background-color: #e6e6e6; 
+  border-radius: 15px; 
+  padding: 35px 40px; 
+  width: 440px; 
+  margin: 150px auto 60px; /* separo más para que no choque con la topbar fija */ 
+  text-align: center; 
+  box-shadow: 0 4px 20px rgba(0,0,0,0.1); 
+}
+
+/* Título */
+.register-container h2 {
+  font-weight: 700;
+  margin-bottom: 20px;
+  color: #333;
+}
+
+/* Inputs */
+.input-group {
+  position: relative;
+  margin-bottom: 15px;
+}
+
+.register-container input {
+  width: 100%;
+  padding: 12px 40px 12px 15px;
+  border: 1px solid #ccc;
+  border-radius: 10px;
+  font-size: 14px;
+  background-color: #fff;
+  box-sizing: border-box; /* importante para que el padding no desborde */
+}
+
+/* Hacer que el formulario use todo el ancho interno y los elementos se alineen */
+.register-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  align-items: stretch; /* hace que los inputs y botones ocupen todo el ancho */
+}
+
+/* Si el logo aparece en la topbar, evitamos que el botón quede en position:fixed
+   (sobre todo porque hay una regla global .btn-home con position:fixed). */
+.topbar-register .btn-home {
+  position: static;
+}
+
+/* Suavizar bordes y mejorar separación interior */
+.register-container {
+  border-radius: 18px;
+  padding: 30px 36px;
+}
+
+/* Alineación y estilo de botones dentro del formulario */
+.register-form .btn-google,
+.register-form .btn-register {
+  width: 100%;
+  padding: 12px 0;
+  border-radius: 10px;
+}
+
+/* Ajustes responsivos para la topbar y el formulario */
+@media (max-width: 600px) {
+  .topbar-register {
+    left: 10px;
+    top: 10px;
+    padding: 6px 8px;
+    gap: 8px;
+  }
+
+  .logo-img {
+    width: 48px;
+  }
+
+  .register-container {
+    width: 90%;
+    margin: 120px auto 40px;
+    padding: 24px;
+  }
+}
+
+/* Pequeña mejora visual al foco de los inputs */
+.register-container input:focus {
+  outline: none;
+  border-color: #8c75e6;
+  box-shadow: 0 4px 12px rgba(140, 117, 230, 0.12);
+}
+
+.password-field .toggle-password {
+  position: absolute;
+  right: 10px;
+  top: 9px;
+  cursor: pointer;
+  font-size: 18px;
+}
+
+/* Botón Google */
+.btn-google {
+  width: 100%;
+  background-color: #db4437;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 10px 0;
+  font-weight: 600;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: 0.3s ease;
+}
+
+.btn-google:hover {
+  background-color: #c23321;
+  transform: scale(1.05);
+}
+
+/* Botón registrar */
+.btn-register {
+  width: 100%;
+  background-color: #333;
+  color: white;
+  border: none;
+  border-radius: 10px;
+  padding: 12px 0;
+  font-weight: 600;
+  margin-top: 10px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+}
+
+.btn-register:hover {
+  background-color: #555;
+  transform: scale(1.05);
+}

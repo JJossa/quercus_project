@@ -1,0 +1,476 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Eventos - Quercus</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    body.menu-page { text-align: center; }
+    .events-container{max-width:1100px;margin:80px auto;padding:10px}
+    .events-grid{display:flex;flex-direction:column;gap:18px;align-items:stretch}
+  .events-grid-top, .events-grid-bottom{display:grid;gap:18px}
+  .events-grid-top{grid-template-columns:repeat(4,1fr);}
+  .events-grid-bottom{grid-template-columns:repeat(5,1fr);}
+  .event-card{text-align:center;padding:8px;position:relative}
+  /* la imagen queda encima, con separación abajo para la etiqueta */
+  .event-thumb{width:120px;height:120px;border-radius:22px;object-fit:cover;display:block;margin:0 auto 12px;box-shadow:0 8px 20px rgba(0,0,0,0.12);transition:transform .18s ease,box-shadow .18s ease;transform-origin:center}
+  .event-card:hover .event-thumb{transform:scale(1.08);box-shadow:0 18px 40px rgba(0,0,0,0.18)}
+  /* etiqueta debajo de la imagen, centrada y con espacio para ver la miniatura */
+  .event-label{font-weight:700;position:static;display:inline-block;margin-top:8px;background:transparent;color:#111;padding:6px 10px;border-radius:8px;z-index:2;white-space:nowrap}
+  .event-header-icon{width:96px;height:auto;display:block;margin:0 auto 12px}
+  .events-link-icon{width:150px;height:auto;margin-left:12px;vertical-align:middle;cursor:pointer;transition:transform .14s ease}
+  .events-link-icon:hover{transform:scale(1.06)}
+    /* top spacing to match menu look */
+    .topbar-spacer{height:56px}
+    /* USER ICON + PROFILE PANEL (copied from menu) */
+    .user-icon{ width:56px; height:auto; border-radius:8px; transition: transform .15s ease }
+    .user-icon:hover{ transform: scale(1.08) }
+
+    .profile-panel{position:fixed;top:56px;right:18px;z-index:10010;pointer-events:none}
+    .profile-outer{background:#2f2f2f;border-radius:22px;padding:10px;box-shadow:0 14px 38px rgba(0,0,0,0.25);pointer-events:auto}
+    .profile-inner{background:#fff;border-radius:14px;padding:12px 14px;width:220px;position:relative}
+    .profile-close{position:absolute;right:8px;top:6px;border:0;background:#e74c3c;color:#fff;width:28px;height:28px;border-radius:6px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+    .profile-avatar-wrap{text-align:center;margin-top:6px}
+    .profile-avatar-bottom{margin-top:10px}
+    .profile-avatar{width:86px;height:86px;border-radius:50%;display:inline-block}
+    .avatar-list{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+    .avatar-thumb{width:44px;height:44px;border-radius:8px;cursor:pointer;border:2px solid transparent;transition:transform .12s ease,border-color .12s ease}
+    .avatar-thumb:hover{transform:translateY(-3px)}
+    .avatar-thumb.selected{border-color:var(--primary, #8c75e6)}
+    .profile-text{margin-top:10px;text-align:left}
+    .profile-row{display:flex;flex-direction:column;align-items:center;margin-bottom:8px}
+    .profile-row strong{font-size:12px;color:#333;margin-bottom:6px}
+    .profile-row div{font-size:13px;color:#111}
+    .editable{background:#f7f7f9;border-radius:8px;padding:6px 8px;min-width:140px;text-align:center}
+    .profile-panel.hidden{opacity:0;transform:translateY(-6px) scale(.98);transition:all .14s ease}
+    .profile-panel.open{opacity:1;transform:none}
+    .logout-btn{background:#ff4757;color:#fff;border:0;padding:8px 14px;border-radius:10px;font-weight:700;cursor:pointer}
+    .logout-btn:hover{background:#ff6b78}
+    .logout-modal{position:fixed;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:11000;visibility:hidden;opacity:0;transition:opacity .12s ease}
+    .logout-modal.visible{visibility:visible;opacity:1;background:rgba(0,0,0,0.45)}
+    .logout-box{background:#fff;border-radius:14px;padding:18px 18px;max-width:360px;width:90%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,0.3)}
+    .logout-box .modal-logo{width:64px;margin-bottom:10px}
+    .logout-box p{font-weight:700;margin:6px 0 12px}
+    .modal-actions{display:flex;gap:10px;justify-content:center}
+    .btn-yes{background:#e74c3c;color:#fff;border:0;padding:8px 14px;border-radius:10px;cursor:pointer;font-weight:700;transition:background .12s ease, transform .12s ease}
+    .btn-yes:hover{background:#ff6b6b;transform:translateY(-2px)}
+    .btn-no{background:#f0f0f0;color:#333;border:0;padding:8px 14px;border-radius:10px;cursor:pointer;transition:background .12s ease, transform .12s ease}
+    .btn-no:hover{background:#e6e6e6;transform:translateY(-2px)}
+  /* coming-soon modal styles */
+  .coming-modal{position:fixed;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:12000;visibility:hidden;opacity:0;transition:opacity .12s ease}
+  .coming-modal.visible{visibility:visible;opacity:1;background:rgba(0,0,0,0.45)}
+  .coming-box{background:#fff;border-radius:12px;padding:18px;max-width:520px;width:92%;text-align:center;box-shadow:0 30px 70px rgba(0,0,0,0.3)}
+  .coming-box .coming-logo{width:76px;height:auto;display:block;margin:0 auto 10px}
+  .coming-box p{margin:10px 0;font-weight:600;color:#222}
+  .coming-ok{background:#8c75e6;color:#fff;border:0;padding:10px 16px;border-radius:10px;cursor:pointer;font-weight:700}
+  .coming-ok:hover{transform:translateY(-2px)}
+    @media (max-width:920px){ .events-grid-top{grid-template-columns:repeat(2,1fr);} .events-grid-bottom{grid-template-columns:repeat(2,1fr);} }
+    @media (max-width:720px){ .event-thumb{width:100px;height:100px} .events-grid-top,.events-grid-bottom{grid-template-columns:1fr} }
+  .btn-mis-eventos{
+  background:#8c75e6;
+  color:#fff;
+  padding:6px 14px;
+  border-radius:999px;
+  text-decoration:none;
+  font-weight:700;
+  font-size:14px;
+  box-shadow:0 4px 10px rgba(0,0,0,0.18);
+}
+.btn-mis-eventos:hover{
+  transform:translateY(-1px);
+}
+
+  </style>
+</head>
+<body class="menu-page">
+  <!-- Topbar con user-icon igual al menu -->
+  <div class="topbar-register" style="justify-content:space-between;left:20px;right:20px;width:calc(100% - 40px);position:fixed;top:0;z-index:9998;padding:12px 24px;display:flex;align-items:center;">
+    <div style="display:flex;align-items:center">
+      <img src="{{ url_for('static', filename='img/logo.jpg') }}" class="logo-img" alt="logo">
+      <a href="{{ url_for('menu') }}" title="Volver al menú">
+        <img src="{{ url_for('static', filename='img/eventos/eventos.png') }}" alt="eventos" class="events-link-icon">
+      </a>
+      <a href="{{ url_for('mis_eventos') }}" class="btn-mis-eventos">Mis eventos</a>
+    </div>
+    <img id="user-icon" src="{{ url_for('static', filename='img/icono_usuario.png') }}" class="user-icon" alt="user" style="cursor:pointer">
+  </div>
+
+  <div class="topbar-spacer"></div>
+
+  <!-- PROFILE PANEL -->
+  <div id="profile-panel" class="profile-panel" aria-hidden="true">
+    <div class="profile-outer">
+      <div class="profile-inner">
+        <button id="profile-close" class="profile-close" aria-label="Cerrar">✕</button>
+        <div class="profile-text">
+          <div class="profile-row"><strong>Nombre:</strong><div id="profile-name">admin</div></div>
+          <div class="profile-row"><strong>Apodo:</strong><div id="profile-nick" class="editable" contenteditable="true">admin</div></div>
+          <div class="profile-row"><strong>Correo:</strong><div id="profile-email">admin@gmail.com</div></div>
+        </div>
+        <div class="profile-avatar-wrap profile-avatar-bottom">
+          <img id="profile-avatar" src="{{ url_for('static', filename='img/icono_usuario.png') }}" alt="avatar" class="profile-avatar">
+        </div>
+        <div class="avatar-selector" style="margin-top:10px;text-align:center">
+          <div style="font-weight:700;margin-bottom:6px">Seleccionar avatar</div>
+          <div class="avatar-list">
+            <img src="{{ url_for('static', filename='img/avatares/avatar1.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar1.png') }}" class="avatar-thumb">
+            <img src="{{ url_for('static', filename='img/avatares/avatar2.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar2.png') }}" class="avatar-thumb">
+            <img src="{{ url_for('static', filename='img/avatares/avatar3.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar3.png') }}" class="avatar-thumb">
+            <img src="{{ url_for('static', filename='img/avatares/avatar4.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar4.png') }}" class="avatar-thumb">
+          </div>
+        </div>
+        <div style="text-align:center;margin-top:10px;"><button id="logout-btn" class="logout-btn">Salir</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logout confirmation modal -->
+  <div id="logout-modal" class="logout-modal" aria-hidden="true">
+    <div class="logout-box">
+      <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="logo" class="modal-logo">
+      <p>¿Estás seguro de salir?</p>
+      <div class="modal-actions">
+        <button id="confirm-yes" class="btn-yes">Sí</button>
+        <button id="confirm-no" class="btn-no">No</button>
+      </div>
+    </div>
+  </div>
+  <!-- Coming soon modal -->
+  <div id="coming-modal" class="coming-modal" aria-hidden="true">
+    <div class="coming-box">
+      <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="logo" class="coming-logo">
+      <h3>Próximamente</h3>
+      <p id="coming-msg">Por el momento solo estamos en Bogotá. Prontamente esperamos informar sobre tu sede. Dentro de poco uniremos más a la comunidad UNAL. Disculpa las molestias.</p>
+      <div style="margin-top:12px"><button id="coming-ok" class="coming-ok">Aceptar</button></div>
+    </div>
+  </div>
+  <main class="events-container">
+  <img src="{{ url_for('static', filename='img/icono1.png') }}" alt="icono eventos" class="event-header-icon">
+  <h2>EVENTOS</h2>
+   <!-- INICIO LISTA DESDE BD -->
+   {#
+   {% if eventos %}
+      <section class="db-events-list" style="margin: 10px 0 20px;">
+        <h3 style="margin-bottom: 8px;">Eventos registrados en la base de datos</h3>
+        <ul style="list-style: none; padding: 0; margin: 0;">
+          {% for e in eventos %}
+            <li style="margin-bottom: 4px;">
+              <strong>{{ e.title }}</strong>
+              – {{ e.date }}
+              – {{ e.location or 'Sin lugar' }}
+            </li>
+          {% endfor %}
+        </ul>
+      </section>
+    {% else %}
+      <p style="margin: 10px 0 20px;">No hay eventos registrados en la base de datos.</p>
+    {% endif %}
+    #}
+    <div class="events-grid">
+      <div class="events-grid-top">
+        <div class="event-card" id="bogota-card"><img src="{{ url_for('static', filename='img/eventos/bogota.png') }}" class="event-thumb"><div class="event-label">Bogotá</div></div>
+        <div class="event-card coming-soon" data-city="Medellín"><img src="{{ url_for('static', filename='img/eventos/medellin.png') }}" class="event-thumb"><div class="event-label">Medellín</div></div>
+        <div class="event-card coming-soon" data-city="Palmira"><img src="{{ url_for('static', filename='img/eventos/palmira.png') }}" class="event-thumb"><div class="event-label">Palmira</div></div>
+        <div class="event-card coming-soon" data-city="Manizales"><img src="{{ url_for('static', filename='img/eventos/manizales.png') }}" class="event-thumb"><div class="event-label">Manizales</div></div>
+      </div>
+
+      <div class="events-grid-bottom">
+        <div class="event-card coming-soon" data-city="Tumaco"><img src="{{ url_for('static', filename='img/eventos/tumaco.png') }}" class="event-thumb"><div class="event-label">Tumaco</div></div>
+        <div class="event-card coming-soon" data-city="Caribe"><img src="{{ url_for('static', filename='img/eventos/sanandres.png') }}" class="event-thumb"><div class="event-label">Caribe</div></div>
+        <div class="event-card coming-soon" data-city="Amazonia"><img src="{{ url_for('static', filename='img/eventos/amazonas.png') }}" class="event-thumb"><div class="event-label">Amazonia</div></div>
+        <div class="event-card coming-soon" data-city="Orinoquía"><img src="{{ url_for('static', filename='img/eventos/orinoquia.png') }}" class="event-thumb"><div class="event-label">Orinoquía</div></div>
+        <div class="event-card coming-soon" data-city="La Paz"><img src="{{ url_for('static', filename='img/eventos/la paz.png') }}" class="event-thumb"><div class="event-label">La Paz</div></div>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    (function(){
+      const userIcon = document.getElementById('user-icon');
+      const panel = document.getElementById('profile-panel');
+      const closeBtn = document.getElementById('profile-close');
+      const nick = document.getElementById('profile-nick');
+
+      // defaults
+      const defaultProfile = { name:'admin', nick:'admin', email:'admin@gmail.com', avatar: "{{ url_for('static', filename='img/icono_usuario.png') }}" };
+
+      function load(){
+        try{
+          const p = JSON.parse(localStorage.getItem('quercus_profile')||'null') || defaultProfile;
+          document.getElementById('profile-name').textContent = p.name;
+          nick.textContent = p.nick;
+          document.getElementById('profile-email').textContent = p.email;
+          document.getElementById('profile-avatar').src = p.avatar;
+          try{ if(userIcon) userIcon.src = p.avatar; }catch(e){}
+          markSelected && markSelected(p.avatar);
+        }catch(e){ console.warn(e); }
+      }
+
+      function save(){
+        try{
+          const obj = { name: document.getElementById('profile-name').textContent.trim(), nick: nick.textContent.trim(), email: document.getElementById('profile-email').textContent.trim(), avatar: document.getElementById('profile-avatar').src };
+          localStorage.setItem('quercus_profile', JSON.stringify(obj));
+        }catch(e){ console.warn(e); }
+      }
+
+      function _basename(path){ try{ return path.split('/').pop().toLowerCase(); }catch(e){ return path; } }
+      function markSelected(src){
+        const thumbs = document.querySelectorAll('.avatar-thumb');
+        const target = _basename(src || '');
+        thumbs.forEach(t => {
+          const candidate = t.dataset && t.dataset.src ? _basename(t.dataset.src) : _basename(t.src);
+          if(candidate && target && candidate === target) t.classList.add('selected'); else t.classList.remove('selected');
+        });
+      }
+
+      const thumbs = document.querySelectorAll('.avatar-thumb');
+      thumbs.forEach(t => {
+        t.addEventListener('click', function(e){
+          e.stopPropagation();
+          // prefer data-src (template provided), fallback to src attribute
+          const src = this.dataset && this.dataset.src ? this.dataset.src : this.src;
+          // set avatar image and topbar icon
+          document.getElementById('profile-avatar').src = src;
+          try{ if(userIcon) userIcon.src = src; }catch(err){}
+          // visually mark selected thumbnail and persist
+          markSelected(src);
+          save();
+        });
+      });
+
+      function toggle(){ if(panel.classList.contains('open')) close(); else open(); }
+      function open(){ panel.classList.add('open'); panel.classList.remove('hidden'); panel.setAttribute('aria-hidden','false'); }
+      function close(){ panel.classList.remove('open'); panel.classList.add('hidden'); panel.setAttribute('aria-hidden','true'); }
+
+      userIcon && userIcon.addEventListener('click', function(e){ e.stopPropagation(); toggle(); });
+      closeBtn && closeBtn.addEventListener('click', function(e){ e.stopPropagation(); close(); });
+      document.addEventListener('click', function(ev){ if(panel && !panel.contains(ev.target) && !(userIcon && userIcon.contains(ev.target))) close(); });
+
+      nick && nick.addEventListener('blur', save);
+      nick && nick.addEventListener('keydown', function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); nick.blur(); save(); } });
+
+      panel && panel.classList.add('hidden');
+      load();
+
+      const logoutBtn = document.getElementById('logout-btn');
+      const logoutModal = document.getElementById('logout-modal');
+      const confirmYes = document.getElementById('confirm-yes');
+      const confirmNo = document.getElementById('confirm-no');
+
+      logoutBtn && logoutBtn.addEventListener('click', function(e){ e.stopPropagation(); logoutModal.classList.add('visible'); logoutModal.setAttribute('aria-hidden','false'); });
+      confirmNo && confirmNo.addEventListener('click', function(e){ e.stopPropagation(); logoutModal.classList.remove('visible'); logoutModal.setAttribute('aria-hidden','true'); });
+      logoutModal && logoutModal.addEventListener('click', function(ev){ if(ev.target === logoutModal){ logoutModal.classList.remove('visible'); logoutModal.setAttribute('aria-hidden','true'); } });
+      confirmYes && confirmYes.addEventListener('click', function(){ try{ localStorage.removeItem('quercus_profile'); }catch(e){} window.location.href = '/logout'; });
+    })();
+  </script>
+  <script>
+    // handler for 'coming soon' cities
+    (function(){
+      const coming = document.querySelectorAll('.coming-soon');
+      const modal = document.getElementById('coming-modal');
+      const ok = document.getElementById('coming-ok');
+      const msg = document.getElementById('coming-msg');
+      function show(city){
+        // include the clicked city in the message
+        const place = city || 'tu sede';
+        msg.textContent = 'Por el momento solo estamos en Bogotá; pronto esperamos informar sobre ' + place + '. Dentro de poco ampliaremos la comunidad UNAL. Disculpa las molestias.';
+        modal.classList.add('visible'); modal.setAttribute('aria-hidden','false');
+      }
+      function hide(){ modal.classList.remove('visible'); modal.setAttribute('aria-hidden','true'); }
+      coming.forEach(c => c.addEventListener('click', function(e){ e.stopPropagation(); const city = this.dataset && this.dataset.city ? this.dataset.city : ''; show(city); }));
+      ok && ok.addEventListener('click', function(){ hide(); });
+      modal && modal.addEventListener('click', function(ev){ if(ev.target === modal) hide(); });
+    })();
+  </script>
+  <script>
+    // Estilos para el modal de eventos
+    const style = document.createElement('style');
+    style.textContent = `
+      .eventos-modal{position:fixed;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:13000;visibility:hidden;opacity:0;transition:opacity .12s ease;background:rgba(0,0,0,0.5)}
+      .eventos-modal.visible{visibility:visible;opacity:1}
+      .eventos-modal-content{background:#fff;border-radius:16px;padding:24px;max-width:700px;width:90%;max-height:80vh;overflow-y:auto;box-shadow:0 30px 70px rgba(0,0,0,0.3)}
+      .eventos-modal-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:20px}
+      .eventos-modal-header h2{margin:0;color:#222;font-size:24px}
+      .eventos-modal-close{background:#e74c3c;color:#fff;border:0;width:32px;height:32px;border-radius:8px;cursor:pointer;font-size:18px;display:flex;align-items:center;justify-content:center}
+      .eventos-modal-close:hover{background:#ff6b6b}
+      .evento-item{background:#f9f9fb;border-left:4px solid #8c75e6;padding:16px;margin-bottom:16px;border-radius:8px;transition:transform .12s ease,box-shadow .12s ease}
+      .evento-item:hover{transform:translateY(-2px);box-shadow:0 8px 20px rgba(0,0,0,0.1)}
+      .evento-item h3{margin:0 0 8px 0;color:#333;font-size:18px;font-weight:700}
+      .evento-item p{margin:6px 0;color:#666;font-size:14px}
+      .evento-fecha{color:#8c75e6;font-weight:600}
+      .evento-desc{color:#555;margin-top:10px}
+      .evento-actions{display:flex;gap:10px;margin-top:12px}
+      .btn-registrarse{background:#8c75e6;color:#fff;border:0;padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:600;transition:background .12s ease,transform .12s ease;flex:1}
+      .btn-registrarse:hover{background:#7860d4;transform:translateY(-2px)}
+      .btn-registrarse.registered{background:#27ae60;cursor:not-allowed}
+    `;
+    document.head.appendChild(style);
+
+    // Crear el modal HTML
+    const modalHTML = `
+      <div id="eventos-modal" class="eventos-modal" aria-hidden="true">
+        <div class="eventos-modal-content">
+          <div class="eventos-modal-header">
+            <h2>Eventos en Bogotá</h2>
+            <button id="eventos-modal-close" class="eventos-modal-close" aria-label="Cerrar">✕</button>
+          </div>
+          <div id="eventos-list"></div>
+        </div>
+      </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modalHTML);
+
+    // Handler para Bogotá
+  // Handler para Bogotá con backend real
+  (function(){
+    const bogotaCard   = document.getElementById('bogota-card');
+    const eventosModal = document.getElementById('eventos-modal');
+    const eventosList  = document.getElementById('eventos-list');
+    const closeBtn     = document.getElementById('eventos-modal-close');
+
+  function mostrarModal(eventos) {
+    eventosList.innerHTML = '';
+
+    eventos.forEach(ev => {
+      const registrado = !!ev.registrado;              // viene del backend
+      const estado = registrado ? 'registrado' : 'no_registrado';
+
+      const html = `
+        <div class="evento-item">
+          <h3>${ev.titulo}</h3>
+          <p class="evento-fecha">📅 ${ev.fecha || 'Sin fecha'}</p>
+          <p class="evento-desc">${ev.descripcion || 'Sin descripción'}</p>
+          <div class="evento-actions">
+            <button
+              class="btn-registrarse ${registrado ? 'registered' : ''}"
+              data-evento-id="${ev.id}"
+              data-estado="${estado}">
+              ${registrado ? '✓ Registrado (Cancelar)' : 'Registrarse'}
+            </button>
+          </div>
+        </div>
+      `;
+      eventosList.insertAdjacentHTML('beforeend', html);
+    });
+
+
+      // Listeners para botones de registrarse
+  document.querySelectorAll('.btn-registrarse').forEach(btn => {
+    btn.addEventListener('click', async function(e){
+      e.stopPropagation();
+
+      const boton    = this;
+      const eventoId = boton.dataset.eventoId;
+      let   estado   = boton.dataset.estado || 'no_registrado';
+
+      // Si NO está registrado → registrar
+      if (estado === 'no_registrado') {
+        try {
+          const resp = await fetch(`/api/eventos/${eventoId}/registrar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          const data = await resp.json();
+
+          if (resp.status === 401) {
+            alert('Debes iniciar sesión para registrarte en un evento.');
+            window.location.href = '/login';
+            return;
+          }
+
+          if (!resp.ok || !data.ok) {
+            alert(data.error || 'Error al registrarse en el evento.');
+            return;
+          }
+
+          // Éxito: marcar como registrado
+          boton.dataset.estado = 'registrado';
+          boton.classList.add('registered');
+          boton.textContent = '✓ Registrado (Cancelar)';
+          console.log('Registrado en evento:', eventoId);
+
+        } catch (err) {
+          console.error('Error al registrarse en el evento:', err);
+          alert('Error de conexión al registrarse en el evento.');
+        }
+
+      // Si YA está registrado → desregistrar
+      } else {
+        // Opcional: confirmación
+        const seguro = confirm('¿Quieres cancelar tu registro en este evento?');
+        if (!seguro) return;
+
+        try {
+          const resp = await fetch(`/api/eventos/${eventoId}/desregistrar`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' }
+          });
+          const data = await resp.json();
+
+          if (resp.status === 401) {
+            alert('Debes iniciar sesión.');
+            window.location.href = '/login';
+            return;
+          }
+
+          if (!resp.ok || !data.ok) {
+            alert(data.error || 'Error al cancelar el registro.');
+            return;
+          }
+
+          // Éxito: volver al estado "no registrado"
+          boton.dataset.estado = 'no_registrado';
+          boton.classList.remove('registered');
+          boton.textContent = 'Registrarse';
+          console.log('Desregistrado de evento:', eventoId);
+
+        } catch (err) {
+          console.error('Error al desregistrarse del evento:', err);
+          alert('Error de conexión al cancelar el registro.');
+        }
+      }
+    });
+  });
+
+
+      eventosModal.classList.add('visible');
+      eventosModal.setAttribute('aria-hidden', 'false');
+    }
+
+    bogotaCard && bogotaCard.addEventListener('click', async function(e){
+      e.stopPropagation();
+      try {
+        const response = await fetch('/api/eventos');
+        const eventos = await response.json();
+
+        console.log('Eventos recibidos:', eventos);
+
+        if (!eventos || eventos.length === 0) {
+          alert('No hay eventos disponibles en Bogotá por el momento.');
+          return;
+        }
+
+        mostrarModal(eventos);
+      } catch (err) {
+        console.error('Error cargando eventos:', err);
+        alert('Error al cargar los eventos.');
+      }
+    });
+
+    closeBtn && closeBtn.addEventListener('click', function(e){
+      e.stopPropagation();
+      eventosModal.classList.remove('visible');
+      eventosModal.setAttribute('aria-hidden', 'true');
+    });
+
+    eventosModal && eventosModal.addEventListener('click', function(ev){
+      if (ev.target === eventosModal) {
+        eventosModal.classList.remove('visible');
+        eventosModal.setAttribute('aria-hidden', 'true');
+      }
+    });
+  })();
+  </script>
+</body>
+</html>

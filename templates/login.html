@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Iniciar Sesión - Quercus</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=DynaPuff:wght@400..700&display=swap" rel="stylesheet">
+
+  <style>
+    /* --- SOLO para esta página --- */
+    .login-container .logo-img {
+      width: 190px;        /* aumenta este valor para hacerlo más grande */
+      display: block;      /* forzar bloque para centrar con margin auto */
+      margin: 0 auto 15px; /* centra horizontalmente y espacio debajo */
+    }
+  </style>
+</head>
+
+<body class="login-page">
+ <button class="btn-home" onclick="window.location='/'">
+    <span class="home-icon">🏠</span> Home
+  </button>
+  <div class="login-container">
+    <img src="{{ url_for('static', filename='img/logo.jpg') }}" class="logo-img" alt="Logo Quercus">
+    <h2>Bienvenido</h2>
+
+    {% if error %}
+      <p class="error">{{ error }}</p>
+    {% endif %}
+
+    <form method="POST">
+      <input type="text" name="usuario" placeholder="Usuario">
+      <input type="password" name="contrasena" placeholder="Contraseña">
+      <button type="submit" class="btn-login">Login</button>
+    </form>
+
+      <button class="btn-google" onclick="alert('Solo correos @unal.edu.co pueden usar este método');">
+      Login con Google Workspace UNAL
+    </button>
+
+    <p>¿No tienes cuenta? <a href="{{ url_for('register') }}">Regístrate aquí</a></p>
+  </div>
+</body>
+</html>

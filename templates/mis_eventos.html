@@ -1,0 +1,203 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Mis eventos - Quercus</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    body.menu-page { text-align: center; }
+
+    .mis-events-container{
+      max-width: 900px;
+      margin: 80px auto;
+      padding: 10px;
+    }
+    .mis-event-card{
+      background: #f9f9fb;
+      border-left: 4px solid #8c75e6;
+      padding: 16px;
+      border-radius: 10px;
+      margin-bottom: 14px;
+      text-align: left;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+    }
+    .mis-event-card h3{
+      margin: 0 0 6px 0;
+      font-size: 18px;
+      color: #333;
+    }
+    .mis-event-card p{
+      margin: 3px 0;
+      font-size: 14px;
+      color: #555;
+    }
+    .mis-event-fecha{
+      color: #8c75e6;
+      font-weight: 600;
+    }
+    .mis-event-actions{
+      margin-top: 8px;
+    }
+    .btn-ver-qr{
+      background: #8c75e6;
+      color: #fff;
+      border: 0;
+      border-radius: 999px;
+      padding: 6px 14px;
+      font-weight: 700;
+      font-size: 13px;
+      cursor: pointer;
+    }
+    .btn-ver-qr:hover{
+      transform: translateY(-1px);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.12);
+    }
+    .topbar-simple{
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 24px;
+      background: #fff;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      z-index: 999;
+    }
+    .btn-back-menu{
+      background: #fcbf24;
+      border: 0;
+      border-radius: 999px;
+      padding: 8px 20px;
+      font-weight: 700;
+      cursor: pointer;
+    }
+    .btn-back-menu:hover{
+      transform: translateY(-1px);
+    }
+
+    /* ====== MODAL QR ====== */
+    #qr-modal.logout-modal{
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.45);
+      display: none;            /* se muestra con JS */
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+    }
+    #qr-modal .logout-box{
+      max-width: 420px;
+      width: 90%;
+      background: #fff;
+      border-radius: 16px;
+      padding: 20px 24px;
+      text-align: center;
+      box-shadow: 0 10px 30px rgba(0,0,0,0.2);
+    }
+    #qr-image{
+      max-width: 220px;
+      max-height: 220px;
+      margin-bottom: 12px;
+      border-radius: 8px;
+    }
+  </style>
+</head>
+<body class="menu-page">
+
+  <!-- Barra superior simple -->
+  <div class="topbar-simple">
+    <div style="display:flex;align-items:center;gap:10px">
+      <img src="{{ url_for('static', filename='img/logo.jpg') }}" class="logo-img" alt="logo" style="height:40px;width:auto">
+      <strong>Quercus</strong>
+    </div>
+    <a href="{{ url_for('menu') }}" class="btn-back-menu">MENÚ</a>
+  </div>
+
+  <div style="height:60px"></div>
+
+  <main class="mis-events-container">
+    <h2>Mis eventos</h2>
+
+    {% if registros %}
+      {% for reg in registros %}
+        {% set ev = reg.event %}
+        <div class="mis-event-card">
+          <h3>{{ ev.title }}</h3>
+          <p class="mis-event-fecha">
+            📅 {{ ev.date }} – {{ ev.location or 'Sin lugar' }}
+          </p>
+          <p>{{ ev.description or 'Sin descripción' }}</p>
+          <p><strong>Estado inscripción:</strong> {{ reg.status or 'inscrito' }}</p>
+
+          <div class="mis-event-actions">
+            <button
+              class="btn-ver-qr"
+              type="button"
+              onclick="openQRModal('{{ reg.registration_id }}')">
+              Ver QR
+            </button>
+          </div>
+        </div>
+      {% endfor %}
+    {% else %}
+      <p>No te has registrado aún en ningún evento.</p>
+    {% endif %}
+  </main>
+
+  <!-- Modal para mostrar el QR -->
+  <div id="qr-modal" class="logout-modal" aria-hidden="true">
+    <div class="logout-box">
+      <img src="{{ url_for('static', filename='img/quercus.png') }}"
+           alt="logo" class="modal-logo"
+           style="max-width:180px;margin-bottom:10px;">
+      <p style="margin-bottom:12px;font-weight:700;">
+        Código QR de tu registro
+      </p>
+      <img id="qr-image" src="" alt="QR">
+      <div class="modal-actions" style="margin-top:12px;">
+        <button id="qr-close" class="btn-no">CERRAR</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    function openQRModal(regId){
+      const modal = document.getElementById('qr-modal');
+      const img   = document.getElementById('qr-image');
+      if (!modal || !img) return;
+
+      // URL del QR (tu ruta Flask)
+      img.src = "/registro/" + regId + "/qr?ts=" + Date.now();
+
+      modal.style.display = "flex";
+      modal.setAttribute("aria-hidden", "false");
+    }
+
+    document.addEventListener('DOMContentLoaded', function(){
+      const modal = document.getElementById('qr-modal');
+      const btnClose = document.getElementById('qr-close');
+      const img = document.getElementById('qr-image');
+
+      if (btnClose && modal){
+        btnClose.addEventListener('click', function(){
+          modal.style.display = "none";
+          modal.setAttribute("aria-hidden", "true");
+          if (img) img.src = "";
+        });
+      }
+
+      // cerrar haciendo click fuera de la caja
+      if (modal){
+        modal.addEventListener('click', function(e){
+          if (e.target === modal){
+            modal.style.display = "none";
+            modal.setAttribute("aria-hidden", "true");
+            if (img) img.src = "";
+          }
+        });
+      }
+    });
+  </script>
+
+</body>
+</html>

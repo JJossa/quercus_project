@@ -1,0 +1,1277 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Horarios - Quercus</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link href="https://fonts.googleapis.com/css2?family=DynaPuff&display=swap" rel="stylesheet">
+  <style>
+    .event-thumb{ width:48px; height:48px; object-fit:cover; border-radius:6px; margin-right:8px; vertical-align:middle; }
+    #image-preview{ max-width:160px; max-height:90px; object-fit:cover; border-radius:6px; display:none; margin-left:8px; }
+    body.menu-page{ text-align:center }
+    .topbar-spacer{height:56px}
+    .horarios-main{max-width:980px;margin:90px auto;padding:12px}
+    .event-header-icon{width:84px;margin:0 auto 8px;display:block}
+    .user-icon{ width:56px; height:auto; border-radius:8px }
+    /* PROFILE PANEL STYLES (copied from menu for parity) */
+    .profile-panel{position:fixed;top:56px;right:18px;z-index:10010;pointer-events:none}
+    .profile-outer{background:#2f2f2f;border-radius:22px;padding:10px;box-shadow:0 14px 38px rgba(0,0,0,0.25);pointer-events:auto}
+    .profile-inner{background:#fff;border-radius:14px;padding:12px 14px;width:220px;position:relative}
+    .profile-close{position:absolute;right:8px;top:6px;border:0;background:#e74c3c;color:#fff;width:28px;height:28px;border-radius:6px;font-size:14px;cursor:pointer;display:inline-flex;align-items:center;justify-content:center}
+    .profile-avatar-wrap{text-align:center;margin-top:6px}
+    .profile-avatar-bottom{margin-top:10px}
+    .profile-avatar{width:86px;height:86px;border-radius:50%;display:inline-block}
+    .avatar-list{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+    .avatar-thumb{width:44px;height:44px;border-radius:8px;cursor:pointer;border:2px solid transparent;transition:transform .12s ease,border-color .12s ease}
+    .avatar-thumb:hover{transform:translateY(-3px)}
+    .avatar-thumb.selected{border-color:var(--primary, #8c75e6)}
+    .profile-text{margin-top:10px;text-align:left}
+    .profile-row{display:flex;flex-direction:column;align-items:center;margin-bottom:8px}
+    .profile-row strong{font-size:12px;color:#333;margin-bottom:6px}
+    .profile-row div{font-size:13px;color:#111}
+    .editable{background:#f7f7f9;border-radius:8px;padding:6px 8px;min-width:140px;text-align:center}
+    .profile-panel.hidden{opacity:0;transform:translateY(-6px) scale(.98);transition:all .14s ease}
+    .profile-panel.open{opacity:1;transform:none}
+    /* logout button + confirmation modal */
+    .logout-btn{background:#ff4757;color:#fff;border:0;padding:8px 14px;border-radius:10px;font-weight:700;cursor:pointer}
+    .logout-btn:hover{background:#ff6b78}
+    .logout-modal{position:fixed;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:11000;visibility:hidden;opacity:0;transition:opacity .12s ease}
+    .logout-modal.visible{visibility:visible;opacity:1;background:rgba(0,0,0,0.45)}
+    .logout-box{background:#fff;border-radius:14px;padding:18px 18px;max-width:360px;width:90%;text-align:center;box-shadow:0 20px 50px rgba(0,0,0,0.3)}
+    .logout-box .modal-logo{width:64px;margin-bottom:10px}
+    .logout-box p{font-weight:700;margin:6px 0 12px}
+    .modal-actions{display:flex;gap:10px;justify-content:center}
+    .btn-yes{background:#e74c3c;color:#fff;border:0;padding:8px 14px;border-radius:10px;cursor:pointer;font-weight:700;transition:background .12s ease, transform .12s ease}
+    .btn-yes:hover{background:#ff6b6b;transform:translateY(-2px)}
+    .btn-no{background:#f0f0f0;color:#333;border:0;padding:8px 14px;border-radius:10px;cursor:pointer;transition:background .12s ease, transform .12s ease}
+    .btn-no:hover{background:#e6e6e6;transform:translateY(-2px)}
+    .btn-inscritos{
+  /* ya hereda el estilo de .btn-secondary, solo damos un pequeño ajuste si quieres */
+     white-space: nowrap;
+    }
+  </style>
+</head>
+<body class="menu-page">
+  <div class="topbar-register" style="justify-content:space-between;left:20px;right:20px;width:calc(100% - 40px);position:fixed;top:0;z-index:9998;padding:12px 24px;display:flex;align-items:center;">
+    <div style="display:flex;align-items:center">
+      <img src="{{ url_for('static', filename='img/logo.jpg') }}" class="logo-img" alt="logo">
+      <a href="{{ url_for('menu') }}" title="Volver al menú">
+        <img src="{{ url_for('static', filename='img/eventos/eventos.png') }}" alt="eventos" class="events-link-icon">
+      </a>
+    </div>
+    <img id="user-icon" src="{{ url_for('static', filename='img/icono_usuario.png') }}" class="user-icon" alt="user" style="cursor:pointer">
+  </div>
+  <div class="topbar-spacer"></div>
+
+  <!-- PROFILE PANEL (copied from menu/eventos) -->
+  <div id="profile-panel" class="profile-panel" aria-hidden="true" style="display:none;">
+    <div class="profile-outer">
+      <div class="profile-inner">
+        <button id="profile-close" class="profile-close" aria-label="Cerrar">✕</button>
+        <div class="profile-text">
+          <div class="profile-row"><strong>Nombre:</strong><div id="profile-name">admin</div></div>
+          <div class="profile-row"><strong>Apodo:</strong><div id="profile-nick" class="editable" contenteditable="true">admin</div></div>
+          <div class="profile-row"><strong>Correo:</strong><div id="profile-email">admin@gmail.com</div></div>
+        </div>
+        <div class="profile-avatar-wrap profile-avatar-bottom">
+          <img id="profile-avatar" src="{{ url_for('static', filename='img/icono_usuario.png') }}" alt="avatar" class="profile-avatar">
+        </div>
+        <div class="avatar-selector" style="margin-top:10px;text-align:center">
+          <div style="font-weight:700;margin-bottom:6px">Seleccionar avatar</div>
+          <div class="avatar-list">
+            <img src="{{ url_for('static', filename='img/avatares/avatar1.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar1.png') }}" class="avatar-thumb">
+            <img src="{{ url_for('static', filename='img/avatares/avatar2.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar2.png') }}" class="avatar-thumb">
+            <img src="{{ url_for('static', filename='img/avatares/avatar3.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar3.png') }}" class="avatar-thumb">
+            <img src="{{ url_for('static', filename='img/avatares/avatar4.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar4.png') }}" class="avatar-thumb">
+          </div>
+        </div>
+        <div style="text-align:center;margin-top:10px;"><button id="logout-btn" class="logout-btn">Salir</button></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Logout confirmation modal -->
+  <div id="logout-modal" class="logout-modal" aria-hidden="true" style="display:none;">
+    <div class="logout-box">
+      <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="logo" class="modal-logo">
+      <p>¿Estás seguro de salir?</p>
+      <div class="modal-actions">
+        <div style="display:flex;gap:10px;justify-content:center;margin-top:6px">
+          <button id="confirm-no" class="btn-no">NO</button>
+          <button id="confirm-yes" class="btn-yes">SI, SALIR</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <style>
+    /* search and schedule card styles */
+    .search-row{display:flex;justify-content:center;margin-top:8px}
+    .search-box{width:560px;max-width:92%;background:#fff;border-radius:28px;padding:10px 14px;box-shadow:0 10px 30px rgba(0,0,0,0.08);display:flex;align-items:center;gap:8px}
+    .search-box .filters{width:34px;height:34px;border-radius:8px;background:#f2f2f2;display:flex;align-items:center;justify-content:center;cursor:pointer}
+    .search-box input{border:0;outline:none;font-weight:700;padding:8px 10px;border-radius:20px;flex:1}
+  /* base card appearance (gray boxed card) */
+  .tbl-actions-cell {
+  display: flex;
+  flex-direction: row;  /* en fila */
+  gap: 8px;
+  align-items: center;
+  justify-content: center;
+  } 
+
+  /* botones dentro de la columna de acción */
+  .tbl-actions-cell .btn-secondary {
+  padding: 4px 10px;
+  font-size: 11px;
+  }  
+
+
+  .tbl-card{ background:#7f7f7f; padding:18px; border-radius:14px; box-shadow:0 18px 40px rgba(0,0,0,0.08); margin-top:22px }
+  .tbl-card.overlay{ margin-top: -60px; z-index:40; transform:translateY(0); }
+    .tbl-grid{
+  display:grid;
+  /* 7 columnas: check, nombre, hora, fecha, facultad, lugar, acción */
+  grid-template-columns: 48px 1.6fr 0.8fr 1fr 1.1fr 1.1fr 1.4fr;
+  gap:10px;
+  align-items:center;
+}
+
+    .tbl-head{background:#c93636;padding:8px;border-radius:20px;color:#fff;font-weight:800;text-align:center}
+  /* make information cells readable: light background with black bold text */
+  .tbl-cell{background:#ffffff;padding:10px;border-radius:10px;height:40px;display:flex;align-items:center;justify-content:center;color:#000;font-weight:800}
+  .tbl-dot{width:14px;height:14px;border-radius:50%;background:var(--accent);margin-right:8px}
+  /* selection box shown in selection mode */
+  .sel-box{width:20px;height:20px;border-radius:6px;border:2px solid rgba(0,0,0,0.12);display:inline-flex;align-items:center;justify-content:center;background:#fff;color:#fff;font-weight:900;cursor:pointer;font-size:12px}
+  .sel-box.checked{background:var(--accent);border-color:var(--accent);color:#fff}
+  /* hide small dot indicator — we use checkbox-style selection */
+  .tbl-dot{display:none}
+  .tbl-actions{display:flex;gap:14px;justify-content:center;margin-top:14px}
+  :root{ --accent: #c93636; --accent-hover: #e04a4a }
+  .btn-main, .btn-secondary{background:var(--accent);color:#fff;border:0;padding:10px 18px;border-radius:20px;font-weight:800;cursor:pointer;transition:background .14s ease,transform .12s ease}
+  .btn-main:hover, .btn-secondary:hover{background:var(--accent-hover);transform:translateY(-2px)}
+
+    /* custom scrollbar for the card if overflow */
+    .tbl-scroll{max-height:220px;overflow:auto;padding-right:6px}
+    .tbl-scroll::-webkit-scrollbar{width:10px}
+    .tbl-scroll::-webkit-scrollbar-thumb{background:#36c6c6;border-radius:10px}
+    .tbl-scroll::-webkit-scrollbar-track{background:transparent}
+
+    @media (max-width:860px){ .tbl-grid{grid-template-columns:36px 1fr 1fr;grid-auto-rows:56px} .tbl-head{display:none} }
+  </style>
+
+  <style>
+    /* inline form alert (replaces alert()) */
+    .form-alert{position:fixed;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:14000;pointer-events:none}
+      .form-alert-box{background:#fff;color:#111;padding:14px 20px;border-radius:14px;box-shadow:0 18px 50px rgba(0,0,0,0.25);font-weight:800;pointer-events:auto;border:3px solid var(--accent);font-family:'DynaPuff',cursive;font-size:18px}
+    .form-alert.hidden{display:none}
+      .invalid-field{outline:0;border:2px solid #e74c3c !important;box-shadow:0 6px 18px rgba(231,76,60,0.16);}
+  </style>
+
+    <style>
+      /* success modal (after creating an event) */
+      .success-modal{position:fixed;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:15000;background:rgba(0,0,0,0.45);visibility:hidden;opacity:0;transition:opacity .18s ease, visibility .18s}
+      .success-modal.visible{visibility:visible;opacity:1}
+    .success-box{width:88%;max-width:720px;background:#4a4a4a;padding:26px;border-radius:12px;box-shadow:0 30px 80px rgba(0,0,0,0.6);text-align:center;color:#fff;font-family:'DynaPuff',cursive}
+    .success-box .logo{width:72px;margin:6px auto 12px;display:block}
+    .success-box p{font-weight:700;line-height:1.5;margin:6px 0 16px;font-size:16px;color:#d3d3d3}
+    .success-accept{background:#111;color:#fff;border-radius:28px;padding:10px 28px;border:0;cursor:pointer;font-weight:900;box-shadow:0 8px 20px rgba(0,0,0,0.4);font-family:'DynaPuff',cursive;transform:translateY(0);transition:transform .18s ease, box-shadow .18s ease}
+    .success-accept:hover{transform:translateY(-4px);box-shadow:0 14px 30px rgba(0,0,0,0.5)}
+    /* entrance animation for accept button */
+    @keyframes popIn { 0%{ transform: scale(.86) translateY(6px); opacity:0 } 60%{ transform: scale(1.04) translateY(-3px); opacity:1 } 100%{ transform: scale(1) translateY(0); opacity:1 } }
+    .success-modal.visible .success-accept{ animation: popIn .36s cubic-bezier(.2,.9,.25,1) both }
+    .tbl-grid.highlight{animation: highlightRow 1.8s ease forwards}
+      @keyframes highlightRow{0%{background:linear-gradient(90deg, rgba(255,255,255,0.02), rgba(255,255,255,0.02))}50%{background:linear-gradient(90deg, rgba(255,255,255,0.18), rgba(255,255,255,0.06))}100%{background:transparent}}
+    </style>
+
+  <style>
+    /* Create modal styles */
+    .create-modal{position:fixed;left:0;top:0;width:100%;height:100%;display:flex;align-items:center;justify-content:center;z-index:13000;background:rgba(0,0,0,0.45)}
+    .create-box{width:88%;max-width:760px;border-radius:18px;background:#b3b3b3;padding:18px 20px;position:relative;box-shadow:0 30px 80px rgba(0,0,0,0.4)}
+    .create-logo{width:58px;display:block;margin:0 auto 6px}
+  .create-close{position:absolute;right:12px;top:10px;border:0;background:var(--accent);color:#fff;border-radius:8px;width:36px;height:36px;cursor:pointer;font-weight:800;display:inline-flex;align-items:center;justify-content:center}
+  .create-close:hover{background:var(--accent-hover);transform:translateY(-1px)}
+    .form-input{width:100%;background:#494949;color:#fff;border-radius:22px;border:0;padding:10px 12px;box-sizing:border-box;font-weight:700}
+  .small-select{width:120px;padding:8px 10px;border-radius:18px}
+    .create-box h3{color:#111;margin-bottom:6px}
+    .create-box label{display:block}
+    /* ensure selects look like dark pill with small triangle on right */
+    .form-input::-webkit-calendar-picker-indicator{filter:invert(1)}
+    @media (max-width:520px){ .create-box{padding:14px} .create-logo{width:48px} }
+  </style>
+
+  <main class="horarios-main">
+    <img src="{{ url_for('static', filename='img/icono2.png') }}" class="event-header-icon" alt="icono">
+    <h2>EVENTOS</h2>
+
+    <div class="search-row">
+      <div class="search-box" role="search">
+        <div class="filters" title="Filtros">
+          <img src="{{ url_for('static', filename='img/icono3.png') }}" alt="filtros" style="width:18px;height:18px;opacity:.9">
+        </div>
+        <input id="search-input" placeholder="Buscar por nombre, facultad, lugar...">
+        <div class="btn-search" title="Buscar">
+          <img src="{{ url_for('static', filename='img/icono2.png') }}" alt="buscar" style="width:16px;height:16px;opacity:.95">
+        </div>
+      </div>
+    </div>
+
+  <div class="tbl-card overlay" aria-live="polite">
+      <div class="tbl-grid tbl-head">
+        <div></div>
+        <div class="tbl-head">Nombre</div>
+        <div class="tbl-head">Hora</div>
+        <div class="tbl-head">Fecha</div>
+        <div class="tbl-head">Facultad</div>
+        <div class="tbl-head">LUGAR</div>
+        <div class="tbl-head">Acción</div>
+      </div>
+
+      <div class="tbl-scroll">
+        <!-- event rows are rendered from localStorage; no hardcoded examples -->
+      </div>
+
+      <div class="tbl-actions">
+        <button class="btn-main">CREAR EVENTO</button>
+  <!-- delete-selected button removed: use ELIMINAR EVENTO to confirm deletion of selected rows -->
+  <button id="delete-toggle-btn" onclick="window.confirmDeleteSelected && window.confirmDeleteSelected(event)" class="btn-secondary">ELIMINAR EVENTO</button>
+      </div>
+    </div>
+  </main>
+
+  <!-- Create Event Modal -->
+  <div id="create-modal" class="create-modal" aria-hidden="true" style="display:none;">
+    <div class="create-box">
+  <button id="create-close" class="create-close" aria-label="Cerrar">✕</button>
+  <img src="{{ url_for('static', filename='img/quercus.png') }}" alt="quercus" class="create-logo">
+  <h3 style="text-align:center;margin:6px 0 12px;font-weight:800;font-family:'DynaPuff',cursive;color:#111;">¡Qué bueno tenerte aquí!<br><span style="font-weight:600;font-size:14px;">Comparte tus eventos para que toda la comunidad los vea</span></h3>
+      <form id="create-form">
+        <div style="display:grid;gap:10px">
+          <!-- STEP 1: basic event info -->
+          <div id="form-step-1" style="display:block">
+            <label style="font-weight:700;color:#111;text-align:left">NOMBRE DEL EVENTO
+              <input id="event-name" name="name" class="form-input" type="text" placeholder="Nombre del evento">
+            </label>
+            <label style="font-weight:700;color:#111;text-align:left">FECHA
+              <div style="display:flex;gap:8px;align-items:center;margin-top:6px">
+                <select name="date_day" id="date-day" class="form-input small-select" aria-label="Día"></select>
+                <select name="date_month" id="date-month" class="form-input small-select" aria-label="Mes"></select>
+                <select name="date_year" id="date-year" class="form-input small-select" aria-label="Año"></select>
+              </div>
+            </label>
+            <label style="font-weight:700;color:#111;text-align:left">HORA
+              <div style="display:flex;gap:6px;align-items:center;margin-top:6px">
+                <select id="event-hour" name="time_hour" class="form-input small-select" aria-label="Hora"></select>
+                <span style="font-weight:800">:</span>
+                <select id="event-minute" name="time_minute" class="form-input small-select" aria-label="Minutos"></select>
+              </div>
+            </label>
+            <label style="font-weight:700;color:#111;text-align:left">FACULTAD
+              <select id="event-faculty" name="faculty" class="form-input">
+                <option value="Artes">Artes</option>
+                <option value="Ciencias">Ciencias</option>
+                <option value="Ciencias Agrarias">Ciencias Agrarias</option>
+                <option value="Ciencias Económicas">Ciencias Económicas</option>
+                <option value="Ciencias Humanas">Ciencias Humanas</option>
+                <option value="Derecho Ciencias Políticas y Sociales">Derecho Ciencias Políticas y Sociales</option>
+                <option value="Enfermería">Enfermería</option>
+                <option value="Ingeniería">Ingeniería</option>
+                <option value="Medicina">Medicina</option>
+                <option value="Medicina Veterinaria y Zootecnia">Medicina Veterinaria y Zootecnia</option>
+                <option value="Odontología">Odontología</option>
+              </select>
+            </label>
+            <label style="font-weight:700;color:#111;text-align:left">LUGAR
+              <input id="event-place" name="place" class="form-input" type="text" placeholder="Lugar">
+            </label>
+            <div style="display:flex;gap:10px;align-items:center;justify-content:center;margin-top:6px">
+              <input id="image-input" name="image" type="file" accept="image/*" style="display:none" />
+              <button type="button" id="choose-image" class="btn-secondary" style="padding:8px 22px">IMAGEN</button>
+              <img id="image-preview" src="" alt="preview" style="display:none;max-width:160px;max-height:90px;border-radius:6px;margin-left:8px;" />
+              <button id="step1-next" type="button" class="btn-main" style="padding:8px 28px">SIGUIENTE</button>
+            </div>
+          </div>
+
+          <!-- STEP 2: additional details (from your mockup) -->
+          <div id="form-step-2" style="display:none">
+            <label style="font-weight:700;color:#111;text-align:left">DESCRIPCIÓN
+              <textarea id="event-desc" name="description" class="form-input" placeholder="Agrega una pequeña descripción del evento" style="min-height:90px"></textarea>
+            </label>
+            <label style="font-weight:700;color:#111;text-align:left">COSTO
+              <select id="event-cost" name="cost" class="form-input">
+                <option value="gratuito">Evento gratuito</option>
+                <option value="pago">Evento de pago</option>
+              </select>
+            </label>
+            <label id="label-event-price" style="font-weight:700;color:#111;text-align:left;display:none">PRECIO (COP)
+              <input id="event-price" name="price" class="form-input" type="text" placeholder="Ingrese precio en pesos (ej. 15000)">
+            </label>
+            <label style="font-weight:700;color:#111;text-align:left">TIPO
+              <select id="event-type" name="type" class="form-input">
+                <option value="Charla">Charla</option>
+                <option value="Conferencia">Conferencia</option>
+                <option value="Taller">Taller</option>
+                <option value="Seminario">Seminario</option>
+                <option value="Mesa redonda">Mesa redonda</option>
+                <option value="Panel de discusión">Panel de discusión</option>
+                <option value="Reunión">Reunión</option>
+                <option value="Congreso">Congreso</option>
+                <option value="Simposio">Simposio</option>
+                <option value="Jornada académica">Jornada académica</option>
+                <option value="Feria estudiantil">Feria estudiantil</option>
+                <option value="Feria de carreras">Feria de carreras</option>
+                <option value="Actividad cultural">Actividad cultural</option>
+                <option value="Proyección de película">Proyección de película</option>
+                <option value="Presentación de proyecto">Presentación de proyecto</option>
+                <option value="Hackathon">Hackathon</option>
+                <option value="Competencia académica">Competencia académica</option>
+                <option value="Tutoría grupal">Tutoría grupal</option>
+                <option value="Clase magistral">Clase magistral</option>
+                <option value="Visita guiada">Visita guiada</option>
+                <option value="Exposición">Exposición</option>
+                <option value="Coloquio">Coloquio</option>
+                <option value="Encuentro estudiantil">Encuentro estudiantil</option>
+                <option value="Debate">Debate</option>
+                <option value="Bootcamp">Bootcamp</option>
+                <option value="Mentoría">Mentoría</option>
+                <option value="Foro">Foro</option>
+                <option value="Ceremonia">Ceremonia</option>
+                <option value="Lanzamiento de iniciativa o club">Lanzamiento de iniciativa o club</option>
+              </select>
+            </label>
+            <label style="font-weight:700;color:#111;text-align:left">SEDE
+              <select id="event-campus" name="campus" class="form-input">
+                <option value="Bogotá">Bogotá</option>
+                <option value="Palmira">Palmira</option>
+                <option value="Medellín">Medellín</option>
+                <option value="Manizales">Manizales</option>
+              </select>
+            </label>
+            <div style="display:flex;gap:10px;align-items:center;justify-content:center;margin-top:6px">
+              <button id="step2-back" type="button" class="btn-secondary" style="padding:8px 20px">ATRÁS</button>
+              <button id="create-submit" type="button" class="btn-main" style="padding:8px 28px">CREAR</button>
+            </div>
+          </div>
+
+        </div>
+      </form>
+    </div>
+  </div>
+
+  <!-- inline non-blocking form alert -->
+  <div id="form-alert" class="form-alert hidden" aria-hidden="true">
+    <div class="form-alert-box">Por favor rellene todos los campos</div>
+  </div>
+
+  <!-- success modal shown after creating an event -->
+  <div id="success-modal" class="success-modal" aria-hidden="true">
+    <div class="success-box">
+      <img src="{{ url_for('static', filename='img/quercus.png') }}" alt="quercus" class="logo">
+      <p id="success-message">Que bien has creado exitosamente tu evento <strong id="success-event-name"></strong>, es un honor compartirlo con toda nuestra comunidad, gracias por tu aporte.</p>
+      <button id="success-accept" class="success-accept">ACEPTAR</button>
+    </div>
+  </div>
+
+
+  <!-- delete confirmation modal -->
+  <div id="delete-confirm" class="logout-modal" aria-hidden="true" style="display:none;">
+    <div class="logout-box">
+      <img src="{{ url_for('static', filename='img/quercus.png') }}" alt="logo" class="modal-logo">
+      <p id="delete-confirm-msg">¿Estás seguro de que deseas eliminar este(s) evento(s)?</p>
+      <div class="modal-actions">
+        <button id="delete-no" class="btn-no">NO</button>
+        <button id="delete-yes" class="btn-yes">SI, ELIMINAR</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    (function(){
+      // Full profile + avatar functionality for this page
+      const userIcon = document.getElementById('user-icon');
+      const panel = document.getElementById('profile-panel');
+      const closeBtn = document.getElementById('profile-close');
+      const nick = document.getElementById('profile-nick');
+      const logoutModal = document.getElementById('logout-modal');
+      const confirmYes = document.getElementById('confirm-yes');
+      const confirmNo = document.getElementById('confirm-no');
+
+      const defaultProfile = { name:'admin', nick:'admin', email:'admin@gmail.com', avatar: "{{ url_for('static', filename='img/icono_usuario.png') }}" };
+
+      function _basename(path){ try{ return path.split('/').pop().toLowerCase(); }catch(e){ return path; } }
+
+      function load(){
+        try{
+          const p = JSON.parse(localStorage.getItem('quercus_profile')||'null') || defaultProfile;
+          document.getElementById('profile-name').textContent = p.name;
+          nick.textContent = p.nick;
+          document.getElementById('profile-email').textContent = p.email;
+          document.getElementById('profile-avatar').src = p.avatar;
+          if(userIcon) userIcon.src = p.avatar;
+          markSelected && markSelected(p.avatar);
+        }catch(e){ console.warn(e); }
+      }
+
+      function save(){
+        try{
+          const obj = { name: document.getElementById('profile-name').textContent.trim(), nick: nick.textContent.trim(), email: document.getElementById('profile-email').textContent.trim(), avatar: document.getElementById('profile-avatar').src };
+          localStorage.setItem('quercus_profile', JSON.stringify(obj));
+        }catch(e){ console.warn(e); }
+      }
+
+      function markSelected(src){
+        const thumbs = document.querySelectorAll('.avatar-thumb');
+        const target = _basename(src || '');
+        thumbs.forEach(t => {
+          const candidate = t.dataset && t.dataset.src ? _basename(t.dataset.src) : _basename(t.src);
+          if(candidate && target && candidate === target) t.classList.add('selected'); else t.classList.remove('selected');
+        });
+      }
+
+      const thumbs = document.querySelectorAll('.avatar-thumb');
+      thumbs.forEach(t => {
+        t.addEventListener('click', function(e){
+          e.stopPropagation();
+          const src = this.dataset && this.dataset.src ? this.dataset.src : this.src;
+          document.getElementById('profile-avatar').src = src;
+          try{ if(userIcon) userIcon.src = src; }catch(err){}
+          markSelected(src);
+          save();
+        });
+      });
+
+      function openPanel(){ panel.style.display = 'block'; panel.setAttribute('aria-hidden','false'); }
+      function closePanel(){ panel.style.display = 'none'; panel.setAttribute('aria-hidden','true'); save(); }
+
+      if(userIcon) userIcon.addEventListener('click', function(e){ e.stopPropagation(); const isOpen = panel.getAttribute('aria-hidden') === 'false'; if(isOpen) closePanel(); else openPanel(); });
+      if(closeBtn) closeBtn.addEventListener('click', function(e){ e.stopPropagation(); closePanel(); });
+      panel && panel.addEventListener('click', function(e){ if(e.target === panel) closePanel(); });
+      nick && nick.addEventListener('blur', save);
+
+      // logout modal handlers
+      const logoutBtn = document.getElementById('logout-btn');
+      if(logoutBtn) logoutBtn.addEventListener('click', function(e){ e.stopPropagation(); logoutModal.style.display = 'flex'; logoutModal.setAttribute('aria-hidden','false'); });
+      if(confirmNo) confirmNo.addEventListener('click', function(){ logoutModal.style.display='none'; logoutModal.setAttribute('aria-hidden','true'); });
+      if(confirmYes) confirmYes.addEventListener('click', function(){ try{ localStorage.removeItem('quercus_profile'); }catch(e){} window.location.href = '/logout'; });
+      logoutModal && logoutModal.addEventListener('click', function(ev){ if(ev.target === logoutModal){ logoutModal.style.display='none'; logoutModal.setAttribute('aria-hidden','true'); } });
+
+      // init
+      document.addEventListener('DOMContentLoaded', function(){ load(); if(panel) panel.style.display='none'; });
+    })();
+  </script>
+  <script>
+    (function(){
+  const createBtn = document.querySelector('.btn-main');
+  const createModal = document.getElementById('create-modal');
+  const createClose = document.getElementById('create-close');
+  const createForm = document.getElementById('create-form');
+  const tblScroll = document.querySelector('.tbl-scroll');
+  // index of event being edited (null = creating new)
+  let editingIndex = null;
+  let editingEventId = null; 
+  let eventsBackend = [];
+  
+  // image selection elements for modal
+  const imageInput = document.getElementById('image-input');
+  const imageBtn = document.getElementById('choose-image');
+  const imagePreview = document.getElementById('image-preview');
+  let selectedImageData = null;
+
+      function openCreate(){ if(createModal){ createModal.style.display='flex'; createModal.setAttribute('aria-hidden','false'); } }
+      function closeCreate(){
+        if(createModal){ createModal.style.display='none'; createModal.setAttribute('aria-hidden','true'); }
+        try{
+          // clear form fields and state so closing with X does NOT keep entered data
+          if(createForm){ createForm.reset(); }
+          // ensure multi-step UI returns to step 1
+          try{ document.getElementById('form-step-1').style.display = 'block'; }catch(e){}
+          try{ document.getElementById('form-step-2').style.display = 'none'; }catch(e){}
+          // clear selected image preview and input
+          selectedImageData = null;
+          if(imagePreview){ imagePreview.src = ''; imagePreview.style.display = 'none'; }
+          if(imageInput) { try{ imageInput.value = ''; }catch(e){} }
+          // remove any invalid markers left on fields
+          ['event-name','date-day','date-month','date-year','event-hour','event-minute','event-faculty','event-place','event-desc','event-cost'].forEach(id => { try{ const el = document.getElementById(id); if(el) el.classList.remove('invalid-field'); }catch(e){} });
+        }catch(err){ console.warn('closeCreate cleanup', err); }
+      }
+
+      createBtn && createBtn.addEventListener('click', function(e){ e.stopPropagation(); editingIndex = null; openCreate(); });
+      createClose && createClose.addEventListener('click', function(e){ e.stopPropagation(); closeCreate(); });
+      createModal && createModal.addEventListener('click', function(e){ if(e.target === createModal) closeCreate(); });
+
+      // show/hide price input when COSTO changes
+      (function(){
+        const costSel = document.getElementById('event-cost');
+        const priceLabel = document.getElementById('label-event-price');
+        const priceInput = document.getElementById('event-price');
+        function updatePriceVisibility(){
+          if(!costSel) return;
+          if(costSel.value === 'pago'){
+            if(priceLabel) priceLabel.style.display = 'block';
+          } else {
+            if(priceLabel) priceLabel.style.display = 'none';
+            if(priceInput){ priceInput.value = ''; priceInput.classList.remove('invalid-field'); }
+          }
+        }
+        if(costSel){ costSel.addEventListener('change', updatePriceVisibility); }
+        // init visibility
+        try{ updatePriceVisibility(); }catch(e){}
+        // format price input with thousands separator (.) as user types
+        function formatWithDots(numeric){
+          if(!numeric) return '';
+          return numeric.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+        }
+        if(priceInput){
+          priceInput.addEventListener('input', function(e){
+            const raw = this.value || '';
+            // keep only digits
+            const digits = raw.replace(/[^0-9]/g, '');
+            if(digits === ''){ this.value = ''; return; }
+            const formatted = formatWithDots(digits);
+            this.value = formatted;
+            // move caret to end for simplicity
+            try{ this.selectionStart = this.selectionEnd = this.value.length; }catch(err){}
+          });
+          // on paste, normalize then format
+          priceInput.addEventListener('paste', function(e){
+            setTimeout(()=>{ const d = (this.value||'').replace(/[^0-9]/g,''); this.value = formatWithDots(d); }, 10);
+          });
+          // optional: on blur ensure no leading zeros
+          priceInput.addEventListener('blur', function(){
+            const d = (this.value||'').replace(/[^0-9]/g,'').replace(/^0+/, '');
+            this.value = d ? formatWithDots(d) : '';
+          });
+        }
+      })();
+
+      createForm && createForm.addEventListener('submit', async function(e){
+        e.preventDefault();
+        const f = new FormData(createForm);
+        // validate required fields (image is optional)
+        const nameVal = (f.get('name')||'').toString().trim();
+        const dayVal = f.get('date_day');
+        const monthVal = f.get('date_month');
+        const yearVal = f.get('date_year');
+        // time parts (hour/minute) from selects
+        const hourVal = f.get('time_hour');
+        const minuteVal = f.get('time_minute'); 
+        const facultyVal = (f.get('faculty')||'').toString().trim();
+        const placeVal = (f.get('place')||'').toString().trim();
+        const costVal = (f.get('cost')||'gratuito').toString();
+        const priceValRaw = (f.get('price')||'').toString().trim();
+        const elPrice = document.getElementById('event-price');
+
+        // if event is paid, require a numeric price value and validate as COP
+        if(costVal === 'pago'){
+          const normalized = (priceValRaw || '').replace(/\.|,/g,'');
+          if(!normalized || !/^\d+$/.test(normalized)){
+            if(elPrice) elPrice.classList.add('invalid-field');
+            if(typeof showFormAlert === 'function') showFormAlert('Por favor ingrese un precio válido en pesos (ej. 15.000)');
+            try{ if(elPrice) elPrice.focus(); }catch(e){}
+            return;
+          }
+          const amount = parseInt(normalized, 10);
+          // basic COP sanity check: must be at least 100 COP and not absurdly large
+          if(!(amount >= 100 && amount <= 1000000000)){
+            if(elPrice) elPrice.classList.add('invalid-field');
+            if(typeof showFormAlert === 'function') showFormAlert('Ingrese un monto razonable en pesos colombianos (ej. 15000)');
+            try{ if(elPrice) elPrice.focus(); }catch(e){}
+            return;
+          }
+        }
+        // elements references
+  const elName = document.getElementById('event-name');
+  const elDay = document.getElementById('date-day');
+  const elMonth = document.getElementById('date-month');
+  const elYear = document.getElementById('date-year');
+  const elHour = document.getElementById('event-hour');
+  const elMinute = document.getElementById('event-minute');
+  const elFaculty = document.getElementById('event-faculty');
+  const elPlace = document.getElementById('event-place');
+
+        // clear previous invalid markers
+  [elName, elDay, elMonth, elYear, elHour, elMinute, elFaculty, elPlace].forEach(e=>{ if(e) e.classList.remove('invalid-field'); });
+
+        const missing = [];
+        if(!nameVal) missing.push(elName);
+        if(!dayVal) missing.push(elDay);
+        if(!monthVal) missing.push(elMonth);
+        if(!yearVal) missing.push(elYear);
+  if(!hourVal || !minuteVal){ missing.push(elHour); missing.push(elMinute); }
+        if(!facultyVal) missing.push(elFaculty);
+        if(!placeVal) missing.push(elPlace);
+
+        if(missing.length){
+          // mark missing fields
+          missing.forEach(el=>{ if(el) el.classList.add('invalid-field'); });
+          if(typeof showFormAlert === 'function') showFormAlert('Por favor rellene todos los campos');
+          // focus first missing field
+          const first = missing.find(Boolean);
+          if(first) try{ first.focus(); }catch(e){}
+          return;
+        }
+        const name = f.get('name')||'Evento';
+        // build date from day/month/year selects
+        const day = f.get('date_day');
+        const month = f.get('date_month');
+        const year = f.get('date_year');
+        const date = (year && month && day) ? `${year}-${String(month).padStart(2,'0')}-${String(day).padStart(2,'0')}` : '';
+        // build time from hour/minute selects
+        const time = (hourVal && minuteVal) ? `${String(hourVal).padStart(2,'0')}:${String(minuteVal).padStart(2,'0')}` : '';
+        console.log('Voy a enviar hora:', time);
+
+        const faculty = f.get('faculty')||'';
+        const place = f.get('place')||'';
+
+        const body = {
+        titulo: name,
+        descripcion: (f.get('description') || '').toString().trim(),
+        fecha: date,   // "YYYY-MM-DD"
+        hora: time,    // "HH:MM"
+        lugar: place,
+        categoria: faculty,
+        capacidad: null,
+        status: 'activo'
+        };
+
+        // validate selected image (if any) before saving
+        async function validateImageSrc(src){
+          if(!src) return true;
+          if(typeof src !== 'string') return false;
+          if(src.indexOf('data:') === 0) return true;
+          // try to load the image via Image() to ensure it's reachable
+          return new Promise((resolve) => {
+            try{
+              const tt = setTimeout(()=>{ resolve(false); }, 6000);
+              const tester = new Image();
+              tester.onload = function(){ clearTimeout(tt); resolve(true); };
+              tester.onerror = function(){ clearTimeout(tt); resolve(false); };
+              // attempt to set src; relative paths and absolute http(s) are supported
+              tester.src = src;
+            }catch(e){ resolve(false); }
+          });
+        }
+
+        const validImage = await validateImageSrc(selectedImageData);
+        if(!validImage){
+          if(typeof showFormAlert === 'function') showFormAlert('La imagen proporcionada no se puede cargar. Verifica la ruta o usa una imagen local.');
+          try{ if(imagePreview) { imagePreview.style.border = '2px solid #e45656'; imagePreview.style.display = 'inline-block'; } }catch(_){}
+          return;
+        }
+
+        // build new event object (para uso local) 
+        const newEvent = {
+          name: name,
+          time: time,
+          date: date,
+          faculty: faculty,
+          place: place,
+          image: selectedImageData,
+          description: (f.get('description')||''),
+          type: (f.get('type')||''),
+          cost: (f.get('cost')||'gratuito'),
+          price: (f.get('price')||''),
+          campus: (f.get('campus')||'')
+        };
+
+        // Construir descripción final que enviaremos a la API
+        let descripcionFinal = newEvent.description || '';
+        const extra = [];
+
+        if (newEvent.cost === 'pago' && priceValRaw) {
+          extra.push('Costo: ' + priceValRaw + ' COP');
+        } else if (newEvent.cost === 'gratuito') {
+          extra.push('Evento gratuito');
+        }
+        if (newEvent.type) {
+          extra.push('Tipo: ' + newEvent.type);
+        }
+        if (newEvent.campus) {
+          extra.push('Sede: ' + newEvent.campus);
+        }
+
+        if (extra.length > 0) {
+          descripcionFinal = (descripcionFinal ? descripcionFinal + '\n\n' : '') + extra.join(' | ');
+        }
+
+        // Payload que espera /api/eventos/create
+        const payload = {
+          titulo:      newEvent.name,
+          descripcion: descripcionFinal,
+          fecha:       date,      // ya está en formato YYYY-MM-DD
+          hora:        time || null, 
+          lugar:       newEvent.place,
+          categoria:   newEvent.faculty,   // usamos facultad como categoría
+          capacidad:   null,
+          status:      'activo'
+        };
+
+        // Decidir si estamos creando o actualizando
+        const isEditing = editingEventId !== null && editingEventId !== undefined;
+        const url    = isEditing ? `/api/eventos/${editingEventId}/update` : '/api/eventos/create';
+        const method = isEditing ? 'PUT' : 'POST';
+
+        console.log('[EVENTO] Enviando payload a', url, 'Metodo:', method, payload);
+
+        try {
+          const resp = await fetch(url, {
+            method: method,
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(payload)
+          });
+
+
+          const data = await resp.json();
+          console.log('[CREAR EVENTO] Respuesta API:', resp.status, data);
+
+          if (!resp.ok) {
+            // usa el mismo sistema de alerta que ya tienes
+            if (typeof showFormAlert === 'function') {
+              showFormAlert(data.error || 'Error al crear el evento.');
+            } else {
+              alert(data.error || 'Error al crear el evento.');
+            }
+            return;
+          }
+
+          // Si todo salió bien en el backend:
+          // cerrar modal, limpiar formulario y mostrar éxito
+          // Si todo salió bien en el backend:
+          closeCreate();
+          createForm.reset();
+          editingIndex   = null;
+          editingEventId = null;
+          try{ document.getElementById('form-step-1').style.display = 'block'; }catch(e){}
+          try{ document.getElementById('form-step-2').style.display = 'none'; }catch(e){}
+          selectedImageData = null;
+          if(imagePreview) { imagePreview.src=''; imagePreview.style.display='none'; }
+          if(imageInput) imageInput.value='';
+
+          try{ showCreateSuccess(name); }catch(e){ console.warn('show success', e); }
+
+          try { await loadEventsToDOM(); } catch(e) {} // recargar la tabla con los eventos de BD
+
+
+          // Opcional: recargar para que otras vistas (como /eventos) vean el nuevo evento
+          // window.location.reload();
+
+        } catch (err) {
+          console.error('[CREAR EVENTO] Error de red:', err);
+          if (typeof showFormAlert === 'function') {
+            showFormAlert('Error de conexión al crear el evento.');
+          } else {
+            alert('Error de conexión al crear el evento.');
+          }
+          return;
+        }
+      });
+
+      // image input handlers
+      if(imageBtn && imageInput){
+        imageBtn.addEventListener('click', function(){ imageInput.click(); });
+        imageInput.addEventListener('change', function(ev){
+          const file = this.files && this.files[0];
+          if(!file) return;
+          const reader = new FileReader();
+          reader.onload = function(evt){
+            selectedImageData = evt.target.result;
+            if(imagePreview){ imagePreview.src = selectedImageData; imagePreview.style.display='inline-block'; }
+          };
+          reader.readAsDataURL(file);
+        });
+      }
+
+      // Events persistence in localStorage
+      const EVENTS_KEY = 'quercus_events';
+      function loadEventsFromStorage(){
+        try{ return JSON.parse(localStorage.getItem(EVENTS_KEY)||'[]'); }catch(e){ return []; }
+      }
+      function saveEventsToStorage(arr){
+        try{ localStorage.setItem(EVENTS_KEY, JSON.stringify(arr||[])); }catch(e){ console.warn('saveEvents error',e); }
+      }
+  // selection state for deletion (always enabled via visible checkboxes)
+  const selectedSet = new Set();
+
+      function renderEventRow(evt, idx){
+        if(!tblScroll) return;
+
+        const row = document.createElement('div');
+        row.className = 'tbl-grid';
+        row.style.marginTop = '8px';
+        row.dataset.index = idx;
+        row.dataset.eventId = evt.id || '';
+
+        row.innerHTML = `
+          <div class="tbl-cell">
+            <div class="tbl-dot"></div>
+            <div class="sel-box" data-idx="${idx}"></div>
+          </div>
+          <div class="tbl-cell">${escapeHtml(evt.name || '')}</div>
+          <div class="tbl-cell">${escapeHtml(evt.time || '')}</div>
+          <div class="tbl-cell">${escapeHtml(evt.date || '')}</div>
+          <div class="tbl-cell">${escapeHtml(evt.faculty || '')}</div>
+          <div class="tbl-cell">${escapeHtml(evt.place || '')}</div>
+          <div class="tbl-cell tbl-actions-cell">
+            <button
+              class="btn-secondary edit-btn"
+              data-idx="${idx}"
+              style="padding:6px 10px;font-size:12px">
+              MODIFICAR
+            </button>
+            ${
+              evt.id
+                ? `<a href="/eventos/${evt.id}/inscritos"
+                      class="btn-secondary btn-inscritos"
+                      style="padding:6px 10px;font-size:12px;">
+                    INSCRITOS
+                  </a>`
+                : ''
+            }
+          </div>
+        `;
+
+        tblScroll.appendChild(row);
+
+        // checkbox de selección
+        const sel = row.querySelector('.sel-box');
+        if (sel){
+          if (selectedSet.has(idx)){
+            sel.textContent = '✓';
+            sel.classList.add('checked');
+          } else {
+            sel.textContent = '';
+            sel.classList.remove('checked');
+          }
+
+          sel.addEventListener('click', function(ev){
+            ev.stopPropagation();
+            const i = parseInt(this.dataset.idx, 10);
+            toggleSelect(i, this);
+          });
+        }
+
+        // permitir seleccionar la fila haciendo click en cualquier parte
+        row.addEventListener('click', function(ev){
+          ev.stopPropagation();
+          const i = parseInt(this.dataset.index, 10);
+          const box = this.querySelector('.sel-box');
+          toggleSelect(i, box);
+        });
+
+        // botón MODIFICAR
+        const editBtn = row.querySelector('.edit-btn');
+        if (editBtn){
+          editBtn.addEventListener('click', function(ev){
+            ev.stopPropagation();
+            const i = parseInt(this.dataset.idx, 10);
+            openEdit(i);
+          });
+        }
+      }
+
+
+
+      async function loadEventsToDOM(){
+        if (!tblScroll) return;
+        tblScroll.innerHTML = '';
+
+        try {
+          const resp = await fetch('/api/eventos');
+          const data = await resp.json();
+
+          if (!resp.ok) {
+            console.error('[HORARIOS] Error al cargar eventos:', data);
+            return;
+          }
+
+          // Guardamos los eventos en un arreglo global
+          eventsBackend = (data || []).map(ev => ({
+            id:       ev.id,                        // ID real en BD
+            name:     ev.titulo || ev.title || '', // por si el backend usa otro nombre
+            time:     ev.hora || ev.time || '',         // por ahora no tenemos campo hora en BD
+            date:     ev.fecha || ev.date || '',
+            faculty:  ev.categoria || ev.category || '',
+            place:    ev.lugar || ev.location || ''
+          }));
+
+          eventsBackend.forEach((it, i) => {
+            renderEventRow(it, i);
+          });
+
+          updateDeleteUI();
+        } catch (err) {
+          console.error('[HORARIOS] Error de red al cargar eventos:', err);
+        }
+      }
+
+
+      // open modal to edit event at index
+      function openEdit(idx){
+        try{
+          const ev = eventsBackend[idx];
+          if (!ev) return;
+
+          // Rellenar campos básicos
+          try { document.getElementById('event-name').value = ev.name || ''; } catch(e){}
+
+          // Fecha: 'YYYY-MM-DD'
+          try {
+            if (ev.date) {
+              const [y, m, d] = ev.date.split('-');
+              document.getElementById('date-year').value  = y;
+              document.getElementById('date-month').value = parseInt(m, 10);
+              // disparar lógica de días por si acaso
+              const yearEl  = document.getElementById('date-year');
+              const monthEl = document.getElementById('date-month');
+              if (yearEl && monthEl) {
+                yearEl.dispatchEvent(new Event('change'));
+                monthEl.dispatchEvent(new Event('change'));
+              }
+              document.getElementById('date-day').value   = parseInt(d, 10);
+            }
+          } catch(e){}
+
+          // Hora: 'HH:MM'
+          try {
+            if (ev.time) {
+              const [hh, mm] = ev.time.split(':');
+              document.getElementById('event-hour').value   = hh;
+              document.getElementById('event-minute').value = mm;
+            }
+          } catch(e){}
+
+          // Facultad y lugar
+          try { document.getElementById('event-faculty').value = ev.faculty || document.getElementById('event-faculty').value; } catch(e){}
+          try { document.getElementById('event-place').value   = ev.place   || ''; } catch(e){}
+
+          // Por ahora dejamos descripción / costo / tipo / sede vacíos o como estén
+          try { document.getElementById('event-desc').value = ''; } catch(e){}
+          try { document.getElementById('event-cost').value = 'gratuito'; } catch(e){}
+
+          // Marcar que estamos editando
+          editingIndex   = idx;
+          editingEventId = ev.id || null;
+
+          // Abrir modal en el PASO 1
+          openCreate();
+          try{
+            document.getElementById('form-step-1').style.display = 'block';
+            document.getElementById('form-step-2').style.display = 'none';
+          }catch(e){}
+        }catch(err){
+          console && console.error && console.error('openEdit', err);
+        }
+      }
+
+
+  // remove invalid marker when user fixes a field
+  const clearable = [document.getElementById('event-name'), document.getElementById('date-day'), document.getElementById('date-month'), document.getElementById('date-year'), document.getElementById('event-hour'), document.getElementById('event-minute'), document.getElementById('event-faculty'), document.getElementById('event-place'), document.getElementById('event-price')];
+  clearable.forEach(el=>{ if(!el) return; el.addEventListener('input', ()=>el.classList.remove('invalid-field')); el.addEventListener('change', ()=>el.classList.remove('invalid-field')); });
+
+      // function to show in-page non-blocking alert for form validation
+      function showFormAlert(message){
+        const a = document.getElementById('form-alert');
+        if(!a) { alert(message); return; }
+        const box = a.querySelector('.form-alert-box');
+        if(box) box.textContent = message;
+        a.classList.remove('hidden');
+        a.setAttribute('aria-hidden','false');
+        // hide after 3s
+        setTimeout(function(){ a.classList.add('hidden'); a.setAttribute('aria-hidden','true'); }, 3000);
+        // allow click to hide immediately
+        a.addEventListener('click', function(){ a.classList.add('hidden'); a.setAttribute('aria-hidden','true'); });
+      }
+
+      // success modal helpers
+      function showCreateSuccess(eventName){
+        const sm = document.getElementById('success-modal');
+        if(!sm) return;
+        const nameEl = document.getElementById('success-event-name');
+        if(nameEl) nameEl.textContent = eventName || '';
+        sm.classList.add('visible'); sm.setAttribute('aria-hidden','false');
+      }
+      function hideCreateSuccess(){
+        const sm = document.getElementById('success-modal');
+        if(!sm) return; sm.classList.remove('visible'); sm.setAttribute('aria-hidden','true');
+      }
+      function highlightLastEvent(){
+        if(!tblScroll) return;
+        const rows = tblScroll.querySelectorAll('.tbl-grid');
+        if(!rows || rows.length===0) return;
+        const last = rows[rows.length-1];
+        try{ last.scrollIntoView({ behavior: 'smooth', block: 'center' }); }catch(e){}
+        // add highlight class then remove after animation
+        last.classList.remove('highlight');
+        // force reflow
+        void last.offsetWidth;
+        last.classList.add('highlight');
+        setTimeout(()=>{ last.classList.remove('highlight'); }, 2000);
+      }
+
+      // hook accept button
+      const successAccept = document.getElementById('success-accept');
+  if(successAccept){ successAccept.addEventListener('click', function(){ hideCreateSuccess(); setTimeout(()=>{ highlightLastEvent(); },120); }); }
+
+      // ensure the modal submit button triggers the form submit handler
+      const createSubmitBtn = document.getElementById('create-submit');
+      if(createSubmitBtn && createForm){
+        createSubmitBtn.addEventListener('click', function(){
+          // prefer requestSubmit when available (will trigger form 'submit' event)
+          if(typeof createForm.requestSubmit === 'function'){
+            createForm.requestSubmit();
+          } else {
+            // fallback: validate and manually call submit handler
+            createForm.dispatchEvent(new Event('submit', {cancelable: true}));
+          }
+        });
+      }
+
+      // --- Step navigation: SIGUIENTE / ATRÁS ---
+      (function(){
+        const step1 = document.getElementById('form-step-1');
+        const step2 = document.getElementById('form-step-2');
+        const step1Next = document.getElementById('step1-next');
+        const step2Back = document.getElementById('step2-back');
+
+        function validateStep1(){
+          const elName = document.getElementById('event-name');
+          const elDay = document.getElementById('date-day');
+          const elMonth = document.getElementById('date-month');
+          const elYear = document.getElementById('date-year');
+          const elHour = document.getElementById('event-hour');
+          const elMinute = document.getElementById('event-minute');
+          const elFaculty = document.getElementById('event-faculty');
+          const elPlace = document.getElementById('event-place');
+
+          // clear previous invalid markers
+          [elName, elDay, elMonth, elYear, elHour, elMinute, elFaculty, elPlace].forEach(e=>{ if(e) e.classList.remove('invalid-field'); });
+
+          const nameVal = (elName && elName.value) ? elName.value.trim() : '';
+          const dayVal = elDay && elDay.value;
+          const monthVal = elMonth && elMonth.value;
+          const yearVal = elYear && elYear.value;
+          const hourVal = elHour && elHour.value;
+          const minuteVal = elMinute && elMinute.value;
+          const facultyVal = (elFaculty && elFaculty.value) ? elFaculty.value.trim() : '';
+          const placeVal = (elPlace && elPlace.value) ? elPlace.value.trim() : '';
+
+          const missing = [];
+          if(!nameVal) missing.push(elName);
+          if(!dayVal) missing.push(elDay);
+          if(!monthVal) missing.push(elMonth);
+          if(!yearVal) missing.push(elYear);
+          if(!hourVal || !minuteVal){ missing.push(elHour); missing.push(elMinute); }
+          if(!facultyVal) missing.push(elFaculty);
+          if(!placeVal) missing.push(elPlace);
+
+          if(missing.length){
+            missing.forEach(el=>{ if(el) el.classList.add('invalid-field'); });
+            if(typeof showFormAlert === 'function') showFormAlert('Por favor rellene todos los campos');
+            const first = missing.find(Boolean);
+            if(first) try{ first.focus(); }catch(e){}
+            return false;
+          }
+          return true;
+        }
+
+        if(step1Next){ step1Next.addEventListener('click', function(){ if(!validateStep1()) return; if(step1) step1.style.display='none'; if(step2) step2.style.display='block'; const d = document.getElementById('event-desc'); if(d) d.focus(); }); }
+        if(step2Back){ step2Back.addEventListener('click', function(){ if(step2) step2.style.display='none'; if(step1) step1.style.display='block'; }); }
+      })();
+
+      // selection / deletion helpers
+  const deleteToggleBtn = document.getElementById('delete-toggle-btn');
+      const deleteConfirmModal = document.getElementById('delete-confirm');
+      const deleteYes = document.getElementById('delete-yes');
+      const deleteNo = document.getElementById('delete-no');
+
+  // Global fallback function called by inline onclick on the delete button
+  window.confirmDeleteSelected = function(ev){
+    try{
+      if(ev && ev.stopPropagation) ev.stopPropagation();
+    }catch(e){}
+    const boxes = document.querySelectorAll('.tbl-scroll .sel-box.checked');
+    let idxs = Array.from(boxes).map(b => parseInt(b.dataset.idx,10)).filter(n=>!Number.isNaN(n));
+    if(idxs.length === 0 && selectedSet.size>0) idxs = Array.from(selectedSet);
+  if(idxs.length === 0){ showFormAlert('No se ha seleccionado ningún evento'); return; }
+  if(deleteConfirmModal){ deleteConfirmModal.style.display='flex'; deleteConfirmModal.classList.add('visible'); deleteConfirmModal.setAttribute('aria-hidden','false'); }
+    const msg = document.getElementById('delete-confirm-msg'); if(msg) msg.textContent = `¿Estás seguro de que deseas eliminar ${idxs.length} evento(s)?`;
+  };
+
+      // no global fallback needed; ELIMINAR EVENTO button now handles confirmation via its click handler
+
+      function toggleSelect(idx, el){
+        if(selectedSet.has(idx)){
+          selectedSet.delete(idx);
+          if(el){ el.classList.remove('checked'); el.textContent = ''; }
+        } else {
+          selectedSet.add(idx);
+          if(el){ el.classList.add('checked'); el.textContent = '✓'; }
+        }
+        updateDeleteUI();
+      }
+
+      function updateDeleteUI(){
+        // update delete button text to show count when items are selected
+        if(deleteToggleBtn){
+          if(selectedSet.size>0){ deleteToggleBtn.textContent = `ELIMINAR EVENTO (${selectedSet.size})`; }
+          else { deleteToggleBtn.textContent = 'ELIMINAR EVENTO'; }
+        }
+      }
+
+      if(deleteToggleBtn){
+        deleteToggleBtn.addEventListener('click', function(){
+          // When user clicks ELIMINAR EVENTO, collect selected items and open confirmation
+          const boxes = document.querySelectorAll('.tbl-scroll .sel-box.checked');
+          const idxs = Array.from(boxes).map(b => parseInt(b.dataset.idx,10)).filter(n => !Number.isNaN(n));
+          // fallback to selectedSet if needed
+          if(idxs.length === 0 && selectedSet.size > 0){ idxs.push(...Array.from(selectedSet)); }
+          if(idxs.length === 0){ showFormAlert('No se ha seleccionado ningún evento'); return; }
+          if(deleteConfirmModal){ deleteConfirmModal.style.display='flex'; deleteConfirmModal.classList.add('visible'); deleteConfirmModal.setAttribute('aria-hidden','false'); }
+          const msg = document.getElementById('delete-confirm-msg'); if(msg) msg.textContent = `¿Estás seguro de que deseas eliminar ${idxs.length} evento(s)?`;
+        });
+      }
+
+      // deleteSelectedBtn was removed; ELIMINAR EVENTO button now opens the confirmation modal
+
+  if(deleteNo){ deleteNo.addEventListener('click', function(){ if(deleteConfirmModal){ deleteConfirmModal.style.display='none'; deleteConfirmModal.classList.remove('visible'); deleteConfirmModal.setAttribute('aria-hidden','true'); } }); }
+    if (deleteYes) {
+      deleteYes.addEventListener('click', async function(){
+        try {
+          // 1. Obtener índices seleccionados desde la tabla
+          const boxes = document.querySelectorAll('.tbl-scroll .sel-box.checked');
+          let idxs = Array.from(boxes)
+            .map(b => parseInt(b.dataset.idx, 10))
+            .filter(n => !Number.isNaN(n));
+
+          // Fallback: si por alguna razón no detecta desde DOM, usar selectedSet
+          if (idxs.length === 0 && selectedSet.size > 0) {
+            idxs = Array.from(selectedSet);
+          }
+
+          if (idxs.length === 0) {
+            showFormAlert('No hay eventos seleccionados');
+            if (deleteConfirmModal) {
+              deleteConfirmModal.style.display='none';
+              deleteConfirmModal.classList.remove('visible');
+              deleteConfirmModal.setAttribute('aria-hidden','true');
+            }
+            return;
+          }
+
+          // 2. Traducir índices de la tabla → IDs reales de BD
+          const idsToDelete = idxs
+            .map(i => (eventsBackend[i] && eventsBackend[i].id) ? eventsBackend[i].id : null)
+            .filter(id => id !== null && id !== undefined);
+
+          if (idsToDelete.length === 0) {
+            showFormAlert('No se encontraron IDs válidos para eliminar');
+            if (deleteConfirmModal) {
+              deleteConfirmModal.style.display='none';
+              deleteConfirmModal.classList.remove('visible');
+              deleteConfirmModal.setAttribute('aria-hidden','true');
+            }
+            return;
+          }
+
+          console.log('[HORARIOS] Eliminando eventos con IDs:', idsToDelete);
+
+          // 3. Llamar al backend para eliminar en PostgreSQL
+          const resp = await fetch('/api/eventos/delete', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ ids: idsToDelete })
+          });
+
+          const data = await resp.json();
+          console.log('[HORARIOS] Respuesta /api/eventos/delete:', resp.status, data);
+
+          if (!resp.ok) {
+            showFormAlert(data.error || 'Error al eliminar eventos');
+            return;
+          }
+
+          // 4. Si todo salió bien: cerrar modal, limpiar selección y recargar
+          selectedSet.clear();
+          if (deleteConfirmModal) {
+            deleteConfirmModal.style.display='none';
+            deleteConfirmModal.classList.remove('visible');
+            deleteConfirmModal.setAttribute('aria-hidden','true');
+          }
+          const card = document.querySelector('.tbl-card');
+          if (card) card.classList.remove('selection-mode');
+
+          await loadEventsToDOM();  // recargar desde BD
+
+          showFormAlert('Evento(s) eliminado(s) correctamente');
+        } catch (err) {
+          console.error('[HORARIOS] Error al eliminar eventos:', err);
+          showFormAlert('Error inesperado al eliminar, revisa la consola');
+        }
+      });
+    }
+
+  // Date picker population logic
+      (function initDatePicker(){
+        const dayEl = document.getElementById('date-day');
+        const monthEl = document.getElementById('date-month');
+        const yearEl = document.getElementById('date-year');
+        if(!dayEl || !monthEl || !yearEl) return;
+        const now = new Date();
+        const currentYear = now.getFullYear();
+        const startYear = currentYear - 2;
+        const endYear = currentYear + 5;
+        const monthNames = ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'];
+        // populate months
+        monthEl.innerHTML = '';
+        monthNames.forEach((m,i)=>{ const opt = document.createElement('option'); opt.value = i+1; opt.textContent = m; monthEl.appendChild(opt); });
+        // populate years
+        yearEl.innerHTML = '';
+        for(let y=startYear;y<=endYear;y++){ const opt=document.createElement('option'); opt.value=y; opt.textContent=y; yearEl.appendChild(opt); }
+        // helper to set days according to month/year
+        function setDays(){
+          const y = parseInt(yearEl.value,10)||currentYear;
+          const m = parseInt(monthEl.value,10)||1;
+          const days = new Date(y,m,0).getDate();
+          const prev = parseInt(dayEl.value,10)||1;
+          dayEl.innerHTML = '';
+          for(let d=1;d<=days;d++){ const o=document.createElement('option'); o.value=d; o.textContent=d; dayEl.appendChild(o); }
+          dayEl.value = Math.min(prev, days);
+        }
+        // initialize selects to today
+        monthEl.value = now.getMonth()+1;
+        yearEl.value = currentYear;
+        setDays();
+        dayEl.value = now.getDate();
+        monthEl.addEventListener('change', setDays);
+        yearEl.addEventListener('change', setDays);
+      })();
+
+      // Time picker population logic
+      (function initTimePicker(){
+        const hourEl = document.getElementById('event-hour');
+        const minuteEl = document.getElementById('event-minute');
+        if(!hourEl || !minuteEl) return;
+        hourEl.innerHTML = '';
+        for(let h=0; h<24; h++){ const o=document.createElement('option'); const hv=String(h).padStart(2,'0'); o.value=hv; o.textContent=hv; hourEl.appendChild(o); }
+        minuteEl.innerHTML = '';
+        ['00','15','30','45'].forEach(m=>{ const o=document.createElement('option'); o.value=m; o.textContent=m; minuteEl.appendChild(o); });
+        const now = new Date();
+        let hr = String(now.getHours()).padStart(2,'0');
+        let min = now.getMinutes();
+        let rounded = Math.ceil(min/15)*15; if(rounded===60){ rounded=0; hr = String((now.getHours()+1)%24).padStart(2,'0'); }
+        minuteEl.value = String(rounded).padStart(2,'0');
+        hourEl.value = hr;
+      })();
+
+  // load persisted events on start
+  try{ loadEventsToDOM(); }catch(e){ /* ignore */ }
+
+      function escapeHtml(s){ return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+    })();
+  </script>
+</body>
+</html>

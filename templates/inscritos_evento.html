@@ -1,0 +1,146 @@
+<!doctype html>
+<html lang="es">
+<head>
+  <meta charset="utf-8" />
+  <title>Inscritos – {{ evento.title }}</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    body.menu-page{ text-align:center; }
+
+    .topbar-simple{
+      position:fixed;
+      top:0; left:0; right:0;
+      display:flex;
+      justify-content:space-between;
+      align-items:center;
+      padding:10px 24px;
+      background:#fff;
+      box-shadow:0 4px 10px rgba(0,0,0,0.08);
+      z-index:999;
+    }
+    .btn-back-menu{
+      background:#fcbf24;
+      border:0;
+      border-radius:999px;
+      padding:8px 20px;
+      font-weight:700;
+      cursor:pointer;
+    }
+    .btn-back-menu:hover{
+      transform:translateY(-1px);
+      box-shadow:0 4px 10px rgba(0,0,0,0.12);
+    }
+
+    .inscritos-container{
+      max-width:900px;
+      margin:90px auto 40px;
+      padding:10px;
+      text-align:left;
+    }
+    .evento-header-box{
+      background:#f9f9fb;
+      border-left:4px solid #8c75e6;
+      padding:14px 18px;
+      border-radius:10px;
+      margin-bottom:16px;
+      box-shadow:0 6px 18px rgba(0,0,0,0.06);
+    }
+    .evento-header-box h2{
+      margin:0 0 4px 0;
+    }
+    .evento-header-box p{
+      margin:2px 0;
+      font-size:14px;
+      color:#555;
+    }
+
+    table.inscritos-table{
+      width:100%;
+      border-collapse:collapse;
+      margin-top:10px;
+      background:#ffffff;
+      border-radius:10px;
+      overflow:hidden;
+      box-shadow:0 6px 18px rgba(0,0,0,0.06);
+      font-size:14px;
+    }
+    table.inscritos-table thead{
+      background:#8c75e6;
+      color:#fff;
+    }
+    table.inscritos-table th,
+    table.inscritos-table td{
+      padding:8px 10px;
+      text-align:left;
+    }
+    table.inscritos-table tbody tr:nth-child(even){
+      background:#f4f4f8;
+    }
+    table.inscritos-table tbody tr:hover{
+      background:#ede9ff;
+    }
+
+    .chip-status{
+      display:inline-block;
+      padding:2px 10px;
+      border-radius:999px;
+      background:#e6f7ff;
+      color:#0077aa;
+      font-size:12px;
+      font-weight:700;
+    }
+
+    .empty-msg{
+      margin-top:20px;
+      font-size:15px;
+      color:#555;
+    }
+  </style>
+</head>
+<body class="menu-page">
+
+  <!-- Barra superior -->
+  <div class="topbar-simple">
+    <div style="display:flex;align-items:center;gap:10px">
+      <img src="{{ url_for('static', filename='img/logo.jpg') }}" class="logo-img" alt="logo" style="height:40px;width:auto">
+      <strong>Quercus</strong>
+    </div>
+    <a href="{{ url_for('horarios') }}" class="btn-back-menu">VOLVER A HORARIOS</a>
+  </div>
+
+  <main class="inscritos-container">
+    <div class="evento-header-box">
+      <h2>Inscritos – {{ evento.title }}</h2>
+      <p>📅 {{ evento.date }} {% if evento.time %}- {{ evento.time.strftime("%H:%M") }}{% endif %}</p>
+      <p>📍 {{ evento.location or 'Sin lugar definido' }}</p>
+      <p><strong>Categoría:</strong> {{ evento.category or 'Sin categoría' }}</p>
+    </div>
+
+    {% if registros %}
+      <table class="inscritos-table">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Nombre</th>
+            <th>Correo</th>
+            <th>Estado inscripción</th>
+          </tr>
+        </thead>
+        <tbody>
+          {% for reg in registros %}
+            <tr>
+              <td>{{ loop.index }}</td>
+              <td>{{ reg.user.name }}</td>
+              <td>{{ reg.user.email }}</td>
+              <td><span class="chip-status">{{ reg.status or 'inscrito' }}</span></td>
+            </tr>
+          {% endfor %}
+        </tbody>
+      </table>
+    {% else %}
+      <p class="empty-msg">Aún no hay usuarios inscritos en este evento.</p>
+    {% endif %}
+  </main>
+
+</body>
+</html>
