@@ -154,3 +154,4 @@ class AccessControl(db.Model):
 
     user = db.relationship('User', back_populates='access_entries')
 
+
