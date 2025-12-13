@@ -86,7 +86,7 @@
             <img src="{{ url_for('static', filename='img/avatares/avatar4.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar4.png') }}" class="avatar-thumb">
           </div>
         </div>
-        <div style="text-align:center;margin-top:10px;"><button id="logout-btn" class="logout-btn">Salir</button></div>
+        <div style="text-align:center;margin-top:10px;"><button id="logout-btn" type="button"="logout-btn">Salir</button></div>
       </div>
     </div>
   </div>
@@ -98,8 +98,8 @@
       <p>¿Estás seguro de salir?</p>
       <div class="modal-actions">
         <div style="display:flex;gap:10px;justify-content:center;margin-top:6px">
-          <button id="confirm-no" class="btn-no">NO</button>
-          <button id="confirm-yes" class="btn-yes">SI, SALIR</button>
+          <button id="confirm-no" type="button" class="btn-no">NO</button>
+          <button id="confirm-yes" type="button" class="btn-yes">SI, SALIR</button>
         </div>
       </div>
     </div>
@@ -450,10 +450,38 @@
 
       // logout modal handlers
       const logoutBtn = document.getElementById('logout-btn');
-      if(logoutBtn) logoutBtn.addEventListener('click', function(e){ e.stopPropagation(); logoutModal.style.display = 'flex'; logoutModal.setAttribute('aria-hidden','false'); });
-      if(confirmNo) confirmNo.addEventListener('click', function(){ logoutModal.style.display='none'; logoutModal.setAttribute('aria-hidden','true'); });
-      if(confirmYes) confirmYes.addEventListener('click', function(){ try{ localStorage.removeItem('quercus_profile'); }catch(e){} window.location.href = '/logout'; });
-      logoutModal && logoutModal.addEventListener('click', function(ev){ if(ev.target === logoutModal){ logoutModal.style.display='none'; logoutModal.setAttribute('aria-hidden','true'); } });
+
+      function openLogoutModal(){
+        if(!logoutModal) return;
+        logoutModal.style.display = 'flex';
+        logoutModal.classList.add('visible');          // 👈 CLAVE
+        logoutModal.setAttribute('aria-hidden','false');
+      }
+
+      function closeLogoutModal(){
+        if(!logoutModal) return;
+        logoutModal.classList.remove('visible');       // 👈 CLAVE
+        logoutModal.setAttribute('aria-hidden','true');
+        // opcional: espera a que haga fade
+        setTimeout(() => { logoutModal.style.display = 'none'; }, 120);
+      }
+
+      if (logoutBtn) logoutBtn.addEventListener('click', function(e){
+        e.stopPropagation();
+        openLogoutModal();
+      });
+
+      if (confirmNo) confirmNo.addEventListener('click', closeLogoutModal);
+
+      if (confirmYes) confirmYes.addEventListener('click', function(){
+        try{ localStorage.removeItem('quercus_profile'); }catch(e){}
+        window.location.href = '/logout';
+      });
+
+      if (logoutModal) logoutModal.addEventListener('click', function(ev){
+        if(ev.target === logoutModal) closeLogoutModal();
+      });
+
 
       // init
       document.addEventListener('DOMContentLoaded', function(){ load(); if(panel) panel.style.display='none'; });
@@ -1275,3 +1303,4 @@
   </script>
 </body>
 </html>
+

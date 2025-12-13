@@ -13,7 +13,7 @@ from models import db, User, Role, Event, Registration, Payment, Notification, R
 app = Flask(__name__)
 
 # 🔌 Configuración de conexión a PostgreSQL
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:DAZhzd79@localhost:5432/quercus_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:postgresql@localhost:5432/quercus_db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Clave para manejar sesiones (login)
@@ -113,7 +113,7 @@ def logout():
     session.clear()
     return redirect(url_for('login'))
 
-def require_roles(allowed_roles): #Decorador para restringir rutas según rol
+def require_roles(allowed_roles):
     """
     allowed_roles: lista de nombres de rol permitidos, p.ej. ['admin', 'organizador']
     """
@@ -121,15 +121,18 @@ def require_roles(allowed_roles): #Decorador para restringir rutas según rol
         @wraps(fn)
         def wrapper(*args, **kwargs):
             user_id   = session.get('user_id')
-            role_name = session.get('role_name')
+            role_name = session.get('role_name', 'estudiante')  # ✅ default
 
             if not user_id:
-                # No hay sesión -> al login
                 return redirect(url_for('login'))
 
             if role_name not in allowed_roles:
-                # Tiene sesión, pero no el rol correcto
-                return "No tienes permisos para acceder a esta funcionalidad.", 403
+                # ✅ Si es API, devolvemos JSON
+                if request.path.startswith('/api/'):
+                    return jsonify({"error": "No autorizado", "role": role_name}), 403
+
+                # ✅ Si es vista normal, redirigimos al menú (o deja el 403 si prefieres)
+                return redirect(url_for('menu'))
 
             return fn(*args, **kwargs)
         return wrapper
