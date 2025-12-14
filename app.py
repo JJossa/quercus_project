@@ -9,7 +9,9 @@ from datetime import datetime, date  # para logout
 from flask_migrate import Migrate
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session, send_file
 from flask_sqlalchemy import SQLAlchemy
+from dotenv import load_dotenv
 
+load_dotenv()
 sys.stdout.reconfigure(encoding='utf-8')
 
 # from users import get_users, add_user  # usar get_users() para leer siempre el estado actual
@@ -25,11 +27,14 @@ def set_json_encoding(response):
     return response
 
 # 🔌 Configuración de conexión a PostgreSQL
-app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:DAZhzd79@localhost:5432/quercus_db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv(
+    'DATABASE_URL',
+    'postgresql://postgres:DAZhzd79@localhost:5432/quercus_db'
+)
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Clave para manejar sesiones (login)
-app.secret_key = 'cambia-esto-por-algo-muy-secreto'
+app.secret_key = os.getenv('FLASK_SECRET_KEY', 'cambia-esto-por-algo-muy-secreto')
 
 # Inicializar SQLAlchemy con la app
 db.init_app(app)
@@ -1161,4 +1166,7 @@ def test_db():
 
 
 if __name__ == '__main__':
-    app.run(debug=True)
+    # Usar configuración para desarrollo vs producción
+    debug_mode = os.getenv('FLASK_ENV', 'production') == 'development'
+    port = int(os.getenv('PORT', 5000))
+    app.run(host='0.0.0.0', port=port, debug=debug_mode)
