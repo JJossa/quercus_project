@@ -1,0 +1,295 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Mensajes - Quercus</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <style>
+    body.menu-page { text-align: center; }
+
+    .topbar-simple{
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 10px 24px;
+      background: #fff;
+      box-shadow: 0 4px 10px rgba(0,0,0,0.08);
+      z-index: 999;
+    }
+
+    .btn-back-menu{
+      background: #fcbf24;
+      border: 0;
+      border-radius: 999px;
+      padding: 8px 20px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .btn-back-menu:hover{
+      transform: translateY(-1px);
+      background: #f0a81f;
+    }
+
+    .messages-container{
+      max-width: 900px;
+      margin: 100px auto;
+      padding: 20px;
+    }
+
+    .activity-log{
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .activity-item{
+      background: #f9f9fb;
+      border-left: 4px solid #8c75e6;
+      padding: 16px;
+      border-radius: 10px;
+      box-shadow: 0 6px 18px rgba(0,0,0,0.06);
+      transition: transform 0.2s ease, box-shadow 0.2s ease;
+    }
+
+    .activity-item:hover{
+      transform: translateY(-2px);
+      box-shadow: 0 8px 22px rgba(0,0,0,0.1);
+    }
+
+    .activity-header{
+      display: flex;
+      justify-content: space-between;
+      align-items: start;
+      margin-bottom: 8px;
+    }
+
+    .activity-type{
+      background: #8c75e6;
+      color: #fff;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-weight: 700;
+      font-size: 12px;
+    }
+
+    .activity-type.register{
+      background: #27ae60;
+    }
+
+    .activity-type.unregister{
+      background: #e74c3c;
+    }
+
+    .activity-type.create{
+      background: #3498db;
+    }
+
+    .activity-type.qr{
+      background: #f39c12;
+    }
+
+    .activity-timestamp{
+      color: #999;
+      font-size: 12px;
+      font-weight: 600;
+    }
+
+    .activity-description{
+      color: #333;
+      font-weight: 700;
+      margin-bottom: 6px;
+      font-size: 15px;
+    }
+
+    .activity-user{
+      color: #666;
+      font-size: 13px;
+    }
+
+    .activity-meta{
+      display: flex;
+      gap: 12px;
+      margin-top: 10px;
+      padding-top: 10px;
+      border-top: 1px solid #e0e0e0;
+      font-size: 12px;
+      color: #999;
+    }
+
+    .empty-message{
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+      font-size: 16px;
+    }
+
+    .loading{
+      text-align: center;
+      padding: 40px 20px;
+      color: #8c75e6;
+      font-weight: 700;
+    }
+
+    .filters{
+      display: flex;
+      gap: 12px;
+      margin-bottom: 24px;
+      flex-wrap: wrap;
+    }
+
+    .filter-btn{
+      background: #fff;
+      border: 2px solid #e0e0e0;
+      padding: 8px 16px;
+      border-radius: 20px;
+      font-weight: 700;
+      cursor: pointer;
+      transition: all 0.2s ease;
+      font-size: 13px;
+      color: #333;
+    }
+
+    .filter-btn.active{
+      background: #8c75e6;
+      color: #fff;
+      border-color: #8c75e6;
+    }
+
+    .filter-btn:hover{
+      border-color: #8c75e6;
+    }
+  </style>
+</head>
+<body class="menu-page">
+
+  <!-- Barra superior -->
+  <div class="topbar-simple">
+    <div style="display:flex;align-items:center;gap:10px">
+      <img src="{{ url_for('static', filename='img/logo.jpg') }}" class="logo-img" alt="logo" style="height:40px;width:auto">
+      <strong>Quercus</strong>
+    </div>
+    <a href="{{ url_for('menu') }}" class="btn-back-menu">MENÚ</a>
+  </div>
+
+  <div style="height:60px"></div>
+
+  <main class="messages-container">
+    <h2>Registro de Actividad</h2>
+
+    <div id="loading" class="loading">Cargando actividad...</div>
+
+    <div id="content" style="display:none">
+      <div class="filters">
+        <button class="filter-btn active" data-filter="all">Todos</button>
+        <button class="filter-btn" data-filter="create_event">Crear Evento</button>
+        <button class="filter-btn" data-filter="register_event">Inscribirse</button>
+        <button class="filter-btn" data-filter="unregister_event">Cancelar Inscripción</button>
+        <button class="filter-btn" data-filter="confirm_attendance">QR Confirmado</button>
+      </div>
+
+      <div id="activity-list" class="activity-log"></div>
+
+      <div id="empty" class="empty-message" style="display:none">
+        <p>No hay actividades registradas.</p>
+      </div>
+    </div>
+  </main>
+
+  <script>
+    let allActivities = [];
+    let currentFilter = 'all';
+
+    const actionTypeMap = {
+      'create_event': 'Crear Evento',
+      'register_event': 'Inscribirse',
+      'unregister_event': 'Cancelar',
+      'confirm_attendance': 'Confirmado (QR)',
+      'delete_event': 'Eliminar Evento'
+    };
+
+    const actionIcons = {
+      'create_event': '📝',
+      'register_event': '✓',
+      'unregister_event': '✕',
+      'confirm_attendance': '✓',
+      'delete_event': '🗑️'
+    };
+
+    document.addEventListener('DOMContentLoaded', async function(){
+      const loadingEl = document.getElementById('loading');
+      const contentEl = document.getElementById('content');
+      const listEl = document.getElementById('activity-list');
+      const emptyEl = document.getElementById('empty');
+
+      try {
+        const resp = await fetch('/api/activity-log');
+        if (!resp.ok) {
+          throw new Error('Error al cargar actividad');
+        }
+
+        const data = await resp.json();
+        allActivities = data.activities || [];
+
+        // Configurar filtros
+        document.querySelectorAll('.filter-btn').forEach(btn => {
+          btn.addEventListener('click', function(){
+            document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+            this.classList.add('active');
+            currentFilter = this.dataset.filter;
+            renderActivities();
+          });
+        });
+
+        renderActivities();
+
+        loadingEl.style.display = 'none';
+        contentEl.style.display = 'block';
+
+      } catch (e) {
+        console.error('Error:', e);
+        loadingEl.innerHTML = '<p style="color:#e74c3c">Error al cargar el registro de actividad</p>';
+      }
+
+      function renderActivities(){
+        const filtered = currentFilter === 'all' 
+          ? allActivities 
+          : allActivities.filter(a => a.action_type === currentFilter);
+
+        if (filtered.length === 0) {
+          listEl.style.display = 'none';
+          emptyEl.style.display = 'block';
+          return;
+        }
+
+        listEl.style.display = 'flex';
+        emptyEl.style.display = 'none';
+
+        listEl.innerHTML = filtered.map(activity => {
+          const date = new Date(activity.timestamp);
+          const dateStr = date.toLocaleString('es-CO');
+          const actionType = activity.action_type;
+          const actionLabel = actionTypeMap[actionType] || actionType;
+          const icon = actionIcons[actionType] || '📌';
+
+          return `
+            <div class="activity-item">
+              <div class="activity-header">
+                <span class="activity-type ${actionType}">${icon} ${actionLabel}</span>
+                <span class="activity-timestamp">${dateStr}</span>
+              </div>
+              <div class="activity-description">${activity.description || 'Actividad registrada'}</div>
+              <div class="activity-user">Por: <strong>${activity.user_name || 'Usuario desconocido'}</strong></div>
+              ${activity.target_resource ? `<div class="activity-meta"><span>Recurso: ${activity.target_resource}</span></div>` : ''}
+            </div>
+          `;
+        }).join('');
+      }
+    });
+  </script>
+
+</body>
+</html>

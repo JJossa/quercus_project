@@ -106,28 +106,6 @@ CREATE TABLE access_control (
 SELECT * FROM users;
 SELECT * FROM users WHERE email LIKE '%unal.edu.co'; -- Validar solo @unal
 
-INSERT INTO event (title, description, date, location, category, capacity, status)
-VALUES (
-    'Taller de Introducción a QUERCUS',
-    'Sesión para presentar la plataforma de eventos de la comunidad UNAL.',
-    '2025-12-15',
-    'Auditorio Principal',
-    'Académico',
-    100,
-    'activo'
-); -- Probando creación manual de evento
-
-INSERT INTO event (title, description, date, location, category, capacity, status)
-VALUES (
-    'Taller de Introducción a IA',
-    'Sesión para presentar la plataforma IA elaborada en Ing Soft II.',
-    '2025-12-12',
-    'Auditorio León de Fr',
-    'Académico',
-    100,
-    'activo'
-); -- Probando creación manual de evento
-
 SELECT * FROM event;
 DELETE FROM event
 WHERE event_id = 1;

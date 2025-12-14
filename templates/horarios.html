@@ -60,7 +60,6 @@
         <img src="{{ url_for('static', filename='img/eventos/eventos.png') }}" alt="eventos" class="events-link-icon">
       </a>
     </div>
-    <img id="user-icon" src="{{ url_for('static', filename='img/icono_usuario.png') }}" class="user-icon" alt="user" style="cursor:pointer">
   </div>
   <div class="topbar-spacer"></div>
 
@@ -206,31 +205,7 @@
 
   <main class="horarios-main">
     <img src="{{ url_for('static', filename='img/icono2.png') }}" class="event-header-icon" alt="icono">
-    <h2>EVENTOS</h2>
-
-    <!-- CALENDARIO DE EVENTOS -->
-    <div id="calendar-section" style="background:#f9f9fb;border-radius:14px;padding:20px;margin-bottom:24px;box-shadow:0 6px 18px rgba(0,0,0,0.06)">
-      <h3 style="margin-top:0;color:#333;font-size:18px">Mis Eventos - Calendario</h3>
-      <div id="calendar-header" style="display:flex;justify-content:space-between;align-items:center;margin-bottom:12px">
-        <button id="prev-month" type="button" style="background:#8c75e6;color:#fff;border:0;width:36px;height:36px;border-radius:8px;cursor:pointer;font-weight:700">◀</button>
-        <h4 id="month-year" style="margin:0;flex:1;text-align:center;color:#333">Enero 2025</h4>
-        <button id="next-month" type="button" style="background:#8c75e6;color:#fff;border:0;width:36px;height:36px;border-radius:8px;cursor:pointer;font-weight:700">▶</button>
-      </div>
-      <div id="calendar-weekdays" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px;margin-bottom:8px;text-align:center">
-        <div style="font-weight:700;color:#8c75e6;font-size:12px">Lun</div>
-        <div style="font-weight:700;color:#8c75e6;font-size:12px">Mar</div>
-        <div style="font-weight:700;color:#8c75e6;font-size:12px">Mié</div>
-        <div style="font-weight:700;color:#8c75e6;font-size:12px">Jue</div>
-        <div style="font-weight:700;color:#8c75e6;font-size:12px">Vie</div>
-        <div style="font-weight:700;color:#e74c3c;font-size:12px">Sab</div>
-        <div style="font-weight:700;color:#e74c3c;font-size:12px">Dom</div>
-      </div>
-      <div id="calendar-grid" style="display:grid;grid-template-columns:repeat(7,1fr);gap:6px"></div>
-      <div style="margin-top:14px;display:flex;gap:16px;font-size:13px">
-        <div style="display:flex;align-items:center;gap:6px"><div style="width:12px;height:12px;border-radius:50%;background:#8c75e6"></div>Evento creado</div>
-        <div style="display:flex;align-items:center;gap:6px"><div style="width:12px;height:12px;border-radius:50%;background:#27ae60"></div>Evento inscrito</div>
-      </div>
-    </div>
+    <h2>CREAR EVENTO</h2>
 
     <div class="search-row">
       <div class="search-box" role="search">
@@ -260,14 +235,28 @@
       </div>
 
       <div class="tbl-actions">
-        <button class="btn-main">CREAR EVENTO</button>
+        <button class="btn-main" id="crear-evento-btn">CREAR EVENTO</button>
   <!-- delete-selected button removed: use ELIMINAR EVENTO to confirm deletion of selected rows -->
   <button id="delete-toggle-btn" onclick="window.confirmDeleteSelected && window.confirmDeleteSelected(event)" class="btn-secondary">ELIMINAR EVENTO</button>
       </div>
     </div>
   </main>
 
-  <!-- Create Event Modal -->
+  <script>
+    // Deshabilitar boton "Crear Evento" para estudiantes
+    (function(){
+      const crearEventoBtn = document.getElementById('crear-evento-btn');
+      const userRole = '{{ session.get("role_name", "estudiante") }}'.toLowerCase();
+      
+      if(userRole === 'estudiante'){
+        crearEventoBtn.disabled = true;
+        crearEventoBtn.style.opacity = '0.5';
+        crearEventoBtn.style.pointerEvents = 'none';
+        crearEventoBtn.style.cursor = 'not-allowed';
+        crearEventoBtn.title = 'Solo organizadores y administradores pueden crear eventos';
+      }
+    })();
+  </script>  <!-- Create Event Modal -->
   <div id="create-modal" class="create-modal" aria-hidden="true" style="display:none;">
     <div class="create-box">
   <button id="create-close" class="create-close" aria-label="Cerrar">✕</button>
@@ -452,24 +441,51 @@
 
       function load(){
         try{
-          const p = JSON.parse(localStorage.getItem('quercus_profile')||'null') || defaultProfile;
-          document.getElementById('profile-name').textContent = p.name;
-          nick.textContent = p.nick;
-          document.getElementById('profile-email').textContent = p.email;
-          document.getElementById('profile-avatar').src = p.avatar;
-          if(userIcon) userIcon.src = p.avatar;
-          markSelected && markSelected(p.avatar);
-          
-          // Cargar rol desde el servidor
+          // Fetch user data from /api/me endpoint
           fetch('/api/me')
-            .then(r => r.json())
-            .then(data => {
-              if(data.role_name){
-                document.getElementById('profile-role').textContent = data.role_name;
-              }
+            .then(r => {
+              if (!r.ok) throw new Error('Not authenticated');
+              return r.json();
             })
-            .catch(e => console.warn('No se pudo cargar el rol:', e));
-        }catch(e){ console.warn(e); }
+            .then(data => {
+              // Use real user data from database
+              const name = data.name || data.nombre || 'Usuario';
+              const email = data.email || 'correo@ejemplo.com';
+              const role = data.role_name || 'estudiante';
+              const avatar = localStorage.getItem('quercus_avatar') || "{{ url_for('static', filename='img/icono_usuario.png') }}";
+              
+              // Try to get nick from localStorage, if not set yet, use empty string
+              let apodo = '';
+              const storedProfile = localStorage.getItem('quercus_profile');
+              if (storedProfile) {
+                try {
+                  const parsed = JSON.parse(storedProfile);
+                  apodo = parsed.nick || '';
+                } catch(e) {}
+              }
+              
+              document.getElementById('profile-name').textContent = name;
+              nick.textContent = apodo;
+              document.getElementById('profile-email').textContent = email;
+              document.getElementById('profile-role').textContent = role;
+              document.getElementById('profile-avatar').src = avatar;
+              if(userIcon) userIcon.src = avatar;
+              markSelected && markSelected(avatar);
+            }))
+            .catch(e => {
+              // Fallback to localStorage if API fails
+              console.warn('Error loading user data:', e);
+              const p = JSON.parse(localStorage.getItem('quercus_profile')||'null') || defaultProfile;
+              document.getElementById('profile-name').textContent = p.name;
+              nick.textContent = p.nick || '';
+              document.getElementById('profile-email').textContent = p.email;
+              document.getElementById('profile-avatar').src = p.avatar;
+              if(userIcon) userIcon.src = p.avatar;
+              markSelected && markSelected(p.avatar);
+            });
+        }catch(e){ 
+          console.warn('Profile loading error:', e); 
+        }
       }
 
       function save(){
@@ -1406,166 +1422,7 @@
     })();
   </script>
 
-  <!-- Script para el calendario de eventos -->
+  <!-- Script para el formulario de creación de eventos -->
   <script>
-    (function(){
-      let currentDate = new Date();
-      let eventosMap = {};  // Map para almacenar {fecha: {creados: [...], inscritos: [...]}}
-
-      // Elementos del DOM
-      const monthYearEl = document.getElementById('month-year');
-      const calendarGridEl = document.getElementById('calendar-grid');
-      const prevBtn = document.getElementById('prev-month');
-      const nextBtn = document.getElementById('next-month');
-
-      // Cargar eventos desde el servidor
-      async function loadEvents(){
-        try {
-          const resp = await fetch('/api/user/events-calendar');
-          if (!resp.ok) return;
-          
-          const data = await resp.json();
-          eventosMap = {};
-
-          // Procesar eventos creados
-          if (data.creados) {
-            data.creados.forEach(ev => {
-              const fecha = ev.fecha;  // formato: YYYY-MM-DD
-              if (!eventosMap[fecha]) eventosMap[fecha] = { creados: [], inscritos: [] };
-              eventosMap[fecha].creados.push(ev);
-            });
-          }
-
-          // Procesar eventos inscritos
-          if (data.inscritos) {
-            data.inscritos.forEach(ev => {
-              const fecha = ev.fecha;
-              if (!eventosMap[fecha]) eventosMap[fecha] = { creados: [], inscritos: [] };
-              eventosMap[fecha].inscritos.push(ev);
-            });
-          }
-
-          renderCalendar();
-        } catch (e) {
-          console.warn('Error cargando eventos del calendario:', e);
-        }
-      }
-
-      // Función para renderizar el calendario
-      function renderCalendar(){
-        if (!monthYearEl || !calendarGridEl) return;
-
-        const year = currentDate.getFullYear();
-        const month = currentDate.getMonth();
-
-        // Nombres de meses
-        const monthNames = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 
-                           'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
-        monthYearEl.textContent = monthNames[month] + ' ' + year;
-
-        // Primer día del mes y cantidad de días
-        const firstDay = new Date(year, month, 1).getDay();
-        const daysInMonth = new Date(year, month + 1, 0).getDate();
-        const daysInPrevMonth = new Date(year, month, 0).getDate();
-
-        calendarGridEl.innerHTML = '';
-
-        // Días del mes anterior
-        for (let i = firstDay - 1; i >= 1; i--) {
-          const dayEl = createDayCell(daysInPrevMonth - i + 1, true);
-          calendarGridEl.appendChild(dayEl);
-        }
-
-        // Días del mes actual
-        const today = new Date();
-        for (let day = 1; day <= daysInMonth; day++) {
-          const isToday = (year === today.getFullYear() && month === today.getMonth() && day === today.getDate());
-          const dateStr = `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
-          const dayEl = createDayCell(day, false, dateStr, isToday);
-          calendarGridEl.appendChild(dayEl);
-        }
-
-        // Días del mes siguiente
-        const totalCells = calendarGridEl.children.length;
-        const remainingCells = 42 - totalCells;  // 6 filas × 7 días
-        for (let day = 1; day <= remainingCells; day++) {
-          const dayEl = createDayCell(day, true);
-          calendarGridEl.appendChild(dayEl);
-        }
-      }
-
-      // Crear una celda de día
-      function createDayCell(day, isOtherMonth, dateStr, isToday){
-        const cell = document.createElement('div');
-        cell.style.cssText = `
-          background: ${isOtherMonth ? '#f0f0f0' : '#fff'};
-          border-radius: 8px;
-          padding: 8px 4px;
-          min-height: 60px;
-          border: 1px solid #e0e0e0;
-          font-weight: ${isToday ? '800' : '600'};
-          color: ${isOtherMonth ? '#aaa' : '#333'};
-          display: flex;
-          flex-direction: column;
-          align-items: center;
-          font-size: 12px;
-          ${isToday ? 'background: #e3f2fd; border: 2px solid #8c75e6;' : ''}
-        `;
-
-        // Número del día
-        const numEl = document.createElement('div');
-        numEl.textContent = day;
-        numEl.style.fontWeight = '700';
-        cell.appendChild(numEl);
-
-        // Mostrar indicadores de eventos si hay
-        if (dateStr && eventosMap[dateStr]) {
-          const eventos = eventosMap[dateStr];
-          const dotsContainer = document.createElement('div');
-          dotsContainer.style.cssText = 'display:flex;gap:2px;margin-top:3px';
-
-          // Punto azul para eventos creados
-          if (eventos.creados.length > 0) {
-            const dot = document.createElement('div');
-            dot.style.cssText = 'width:6px;height:6px;border-radius:50%;background:#8c75e6';
-            dot.title = `${eventos.creados.length} creado(s)`;
-            dotsContainer.appendChild(dot);
-          }
-
-          // Punto verde para eventos inscritos
-          if (eventos.inscritos.length > 0) {
-            const dot = document.createElement('div');
-            dot.style.cssText = 'width:6px;height:6px;border-radius:50%;background:#27ae60';
-            dot.title = `${eventos.inscritos.length} inscrito(s)`;
-            dotsContainer.appendChild(dot);
-          }
-
-          if (dotsContainer.children.length > 0) {
-            cell.appendChild(dotsContainer);
-          }
-        }
-
-        return cell;
-      }
-
-      // Event listeners para navegación
-      if (prevBtn) {
-        prevBtn.addEventListener('click', function(){
-          currentDate.setMonth(currentDate.getMonth() - 1);
-          renderCalendar();
-        });
-      }
-
-      if (nextBtn) {
-        nextBtn.addEventListener('click', function(){
-          currentDate.setMonth(currentDate.getMonth() + 1);
-          renderCalendar();
-        });
-      }
-
-      // Cargar eventos y renderizar al iniciar
-      loadEvents();
-    })();
-  </script>
 </body>
 </html>

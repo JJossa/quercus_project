@@ -143,49 +143,9 @@
         <img src="{{ url_for('static', filename='img/eventos/eventos.png') }}" alt="eventos" class="events-link-icon">
       </a>
     </div>
-    <img id="user-icon" src="{{ url_for('static', filename='img/icono_usuario.png') }}" class="user-icon" alt="user" style="cursor:pointer">
   </div>
 
   <div class="topbar-spacer"></div>
-
-  <!-- PROFILE PANEL -->
-  <div id="profile-panel" class="profile-panel" aria-hidden="true">
-    <div class="profile-outer">
-      <div class="profile-inner">
-        <button id="profile-close" class="profile-close" aria-label="Cerrar">✕</button>
-        <div class="profile-text">
-          <div class="profile-row"><strong>Nombre:</strong><div id="profile-name">admin</div></div>
-          <div class="profile-row"><strong>Apodo:</strong><div id="profile-nick" class="editable" contenteditable="true">admin</div></div>
-          <div class="profile-row"><strong>Correo:</strong><div id="profile-email">admin@gmail.com</div></div>
-        </div>
-        <div class="profile-avatar-wrap profile-avatar-bottom">
-          <img id="profile-avatar" src="{{ url_for('static', filename='img/icono_usuario.png') }}" alt="avatar" class="profile-avatar">
-        </div>
-        <div class="avatar-selector" style="margin-top:10px;text-align:center">
-          <div style="font-weight:700;margin-bottom:6px">Seleccionar avatar</div>
-          <div class="avatar-list">
-            <img src="{{ url_for('static', filename='img/avatares/avatar1.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar1.png') }}" class="avatar-thumb">
-            <img src="{{ url_for('static', filename='img/avatares/avatar2.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar2.png') }}" class="avatar-thumb">
-            <img src="{{ url_for('static', filename='img/avatares/avatar3.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar3.png') }}" class="avatar-thumb">
-            <img src="{{ url_for('static', filename='img/avatares/avatar4.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar4.png') }}" class="avatar-thumb">
-          </div>
-        </div>
-        <div style="text-align:center;margin-top:10px;"><button id="logout-btn" class="logout-btn">Salir</button></div>
-      </div>
-    </div>
-  </div>
-
-  <!-- Logout confirmation modal -->
-  <div id="logout-modal" class="logout-modal" aria-hidden="true">
-    <div class="logout-box">
-      <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="logo" class="modal-logo">
-      <p>¿Estás seguro de salir?</p>
-      <div class="modal-actions">
-        <button id="confirm-yes" class="btn-yes">Sí</button>
-        <button id="confirm-no" class="btn-no">No</button>
-      </div>
-    </div>
-  </div>
   <!-- Coming soon modal -->
   <div id="coming-modal" class="coming-modal" aria-hidden="true">
     <div class="coming-box">
@@ -261,76 +221,6 @@
     </div>
   </main>
 
-  <script>
-    (function(){
-      const userIcon = document.getElementById('user-icon');
-      const panel = document.getElementById('profile-panel');
-      const closeBtn = document.getElementById('profile-close');
-      const nick = document.getElementById('profile-nick');
-
-      const defaultProfile = { name:'admin', nick:'admin', email:'admin@gmail.com', avatar: "{{ url_for('static', filename='img/icono_usuario.png') }}" };
-
-      function load(){
-        try{
-          const p = JSON.parse(localStorage.getItem('quercus_profile')||'null') || defaultProfile;
-          document.getElementById('profile-name').textContent = p.name;
-          nick.textContent = p.nick;
-          document.getElementById('profile-email').textContent = p.email;
-          document.getElementById('profile-avatar').src = p.avatar;
-          try{ if(userIcon) userIcon.src = p.avatar; }catch(e){}
-        }catch(e){ console.warn(e); }
-      }
-
-      function save(){
-        try{
-          const obj = { name: document.getElementById('profile-name').textContent.trim(), nick: nick.textContent.trim(), email: document.getElementById('profile-email').textContent.trim(), avatar: document.getElementById('profile-avatar').src };
-          localStorage.setItem('quercus_profile', JSON.stringify(obj));
-        }catch(e){ console.warn(e); }
-      }
-
-      // avatar selector handling
-      function markSelected(src){
-        const thumbs = document.querySelectorAll('.avatar-thumb');
-        thumbs.forEach(t => { if(t.dataset && t.dataset.src === src) t.classList.add('selected'); else t.classList.remove('selected'); });
-      }
-      const thumbs = document.querySelectorAll('.avatar-thumb');
-      thumbs.forEach(t => {
-        t.addEventListener('click', function(e){
-          e.stopPropagation();
-          const src = this.dataset.src || this.src;
-          document.getElementById('profile-avatar').src = src;
-          try{ if(userIcon) userIcon.src = src; }catch(err){}
-          markSelected(src);
-          save();
-        });
-      });
-
-      function toggle(){ if(panel.classList.contains('open')) close(); else open(); }
-      function open(){ panel.classList.add('open'); panel.classList.remove('hidden'); panel.setAttribute('aria-hidden','false'); }
-      function close(){ panel.classList.remove('open'); panel.classList.add('hidden'); panel.setAttribute('aria-hidden','true'); }
-
-      userIcon.addEventListener('click', function(e){ e.stopPropagation(); toggle(); });
-      closeBtn.addEventListener('click', function(e){ e.stopPropagation(); close(); });
-      document.addEventListener('click', function(ev){ if(!panel.contains(ev.target) && !userIcon.contains(ev.target)) close(); });
-
-      nick.addEventListener('blur', save);
-      nick.addEventListener('keydown', function(ev){ if(ev.key==='Enter'){ ev.preventDefault(); nick.blur(); save(); } });
-
-      panel.classList.add('hidden');
-      load();
-
-      // logout modal handlers
-      const logoutBtn = document.getElementById('logout-btn');
-      const logoutModal = document.getElementById('logout-modal');
-      const confirmYes = document.getElementById('confirm-yes');
-      const confirmNo = document.getElementById('confirm-no');
-
-      logoutBtn && logoutBtn.addEventListener('click', function(e){ e.stopPropagation(); logoutModal.classList.add('visible'); logoutModal.setAttribute('aria-hidden','false'); });
-      confirmNo && confirmNo.addEventListener('click', function(e){ e.stopPropagation(); logoutModal.classList.remove('visible'); logoutModal.setAttribute('aria-hidden','true'); });
-      logoutModal && logoutModal.addEventListener('click', function(ev){ if(ev.target === logoutModal){ logoutModal.classList.remove('visible'); logoutModal.setAttribute('aria-hidden','true'); } });
-      confirmYes && confirmYes.addEventListener('click', function(){ try{ localStorage.removeItem('quercus_profile'); }catch(e){} window.location.href = '/logout'; });
-    })();
-  </script>
   <script>
     // Alertas form & rendering (fecha/hora con inputs nativos; filas en lugar de celdas)
     (function(){

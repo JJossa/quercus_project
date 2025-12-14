@@ -14,7 +14,7 @@ sys.stdout.reconfigure(encoding='utf-8')
 
 # from users import get_users, add_user  # usar get_users() para leer siempre el estado actual
 from events import get_events, add_event, obtener_eventos_usuario, registrar_usuario_evento, desregistrar_usuario  # endpoints simples para eventos
-from models import db, User, Role, Event, Registration, Payment, Notification, Report, AccessControl
+from models import db, User, Role, Event, Registration, Payment, Notification, Report, AccessControl, ActivityLog
 
 app = Flask(__name__)
 
@@ -134,8 +134,8 @@ def get_user_events_calendar():
     if not user_id:
         return jsonify({"error": "No hay sesión"}), 401
     
-    # Eventos creados por el usuario
-    eventos_creados = Event.query.filter_by(creator_id=user_id).all()
+    # Nota: Event table no tiene creator_id field, así que devolvemos solo inscritos
+    eventos_creados = []  # Vacío por ahora - tabla event no tiene creator_id
     
     # Eventos en los que está inscrito
     registros = Registration.query.filter_by(user_id=user_id).all()
@@ -177,11 +177,7 @@ def update_user_profile():
     
     data = request.get_json() or {}
     
-    # Actualizar apodo
-    if 'nick' in data:
-        user.name = data['nick'].strip()
-    
-    # Actualizar contraseña
+    # Actualizar contraseña SOLO (el nick se guarda en localStorage del cliente)
     if 'password' in data:
         new_password = data['password'].strip()
         if new_password:
@@ -425,6 +421,15 @@ def horarios():
 @app.route('/alertas')
 def alertas():
     return render_template('alertas.html')
+
+@app.route('/estadisticas')
+@require_roles(['admin', 'organizador'])
+def estadisticas():
+    return render_template('estadisticas.html')
+
+@app.route('/mensajes')
+def mensajes():
+    return render_template('mensajes.html')
 
 # API mínima para eventos: listar y crear (cliente puede llamar vía fetch/ajax)
 @app.route('/api/eventos', methods=['GET'])
@@ -784,6 +789,200 @@ def ver_inscritos_evento(evento_id):
         registros=registros
     )
 
+
+
+# API ESTADÍSTICAS
+@app.route('/api/user/stats', methods=['GET'])
+def api_user_stats():
+    """Obtener estadísticas del usuario actual"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'No autenticado'}), 401
+    
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'Usuario no encontrado'}), 404
+    
+    # Solo organizadores y admins pueden ver estadísticas
+    role_name = (user.role.role_name if user.role else 'estudiante').lower()
+    if role_name not in ['admin', 'organizador']:
+        return jsonify({'error': 'No autorizado'}), 403
+    
+    # Si es admin, mostrar estadísticas globales; si es organizador, mostrar sus estadísticas
+    if role_name == 'admin':
+        # Eventos creados en total
+        events_created = Event.query.count()
+        
+        # Total de inscripciones
+        total_inscriptions = Registration.query.count()
+        
+        # Asistencia confirmada
+        total_attendance = Registration.query.filter(Registration.qr_code != None).count()
+        
+        # Sedes principales
+        top_locations = db.session.query(
+            Event.location,
+            db.func.count(Event.event_id).label('count')
+        ).group_by(Event.location).order_by(
+            db.func.count(Event.event_id).desc()
+        ).limit(5).all()
+    else:
+        # Eventos creados por este usuario (organizador)
+        # Nota: tabla Event no tiene campo organizer_id, así que devolvemos 0
+        events_created = 0  # Event.query.filter_by(organizer_id=user_id).count()
+        total_inscriptions = 0
+        total_attendance = 0
+        top_locations = []
+    
+    locations = [{'location': loc[0], 'count': loc[1]} for loc in top_locations]
+    
+    return jsonify({
+        'events_created': events_created,
+        'total_inscriptions': total_inscriptions,
+        'total_attendance': total_attendance,
+        'top_locations': locations
+    })
+
+
+@app.route('/api/user/stats/pdf', methods=['GET'])
+def api_user_stats_pdf():
+    """Descargar PDF con estadísticas"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'No autenticado'}), 401
+    
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'Usuario no encontrado'}), 404
+    
+    # Solo organizadores y admins
+    role_name = (user.role.role_name if user.role else 'estudiante').lower()
+    if role_name not in ['admin', 'organizador']:
+        return jsonify({'error': 'No autorizado'}), 403
+    
+    try:
+        from reportlab.lib.pagesizes import letter
+        from reportlab.lib import colors
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+        from reportlab.lib.units import inch
+        from io import BytesIO
+        
+        # Datos
+        stats_data = {
+            'events_created': 0,  # Event.query.filter_by(organizer_id=user_id).count() - campo no existe
+            'total_inscriptions': 0,
+            'total_attendance': 0
+        }
+        
+        # Crear PDF
+        buffer = BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.75*inch)
+        elements = []
+        
+        styles = getSampleStyleSheet()
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            textColor=colors.HexColor('#8c75e6'),
+            spaceAfter=20
+        )
+        
+        # Título
+        elements.append(Paragraph('Estadísticas de Eventos - QUERCUS', title_style))
+        elements.append(Spacer(1, 0.3*inch))
+        
+        # Información del usuario
+        elements.append(Paragraph(f'<b>Usuario:</b> {user.name} ({user.email})', styles['Normal']))
+        elements.append(Paragraph(f'<b>Fecha:</b> {date.today().strftime("%d de %B de %Y")}', styles['Normal']))
+        elements.append(Spacer(1, 0.3*inch))
+        
+        # Tabla de estadísticas
+        data = [
+            ['Métrica', 'Cantidad'],
+            ['Eventos Creados', str(stats_data['events_created'])],
+            ['Total de Inscripciones', str(stats_data['total_inscriptions'])],
+            ['Asistencia Confirmada', str(stats_data['total_attendance'])]
+        ]
+        
+        table = Table(data, colWidths=[3*inch, 2*inch])
+        table.setStyle(TableStyle([
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#8c75e6')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 14),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
+            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+        ]))
+        
+        elements.append(table)
+        elements.append(Spacer(1, 0.3*inch))
+        elements.append(Paragraph('<i>Este documento fue generado automáticamente por QUERCUS</i>', styles['Normal']))
+        
+        doc.build(elements)
+        buffer.seek(0)
+        
+        return send_file(
+            buffer,
+            mimetype='application/pdf',
+            as_attachment=True,
+            download_name=f'estadisticas_{date.today().isoformat()}.pdf'
+        )
+        
+    except ImportError:
+        return jsonify({'error': 'reportlab no instalado'}), 500
+    except Exception as e:
+        print(f'Error generando PDF: {e}')
+        return jsonify({'error': str(e)}), 500
+
+
+# API ACTIVITY LOG
+@app.route('/api/activity-log', methods=['GET'])
+def api_activity_log():
+    """Obtener registro de actividades"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({'error': 'No autenticado'}), 401
+    
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({'error': 'Usuario no encontrado'}), 404
+    
+    role_name = (user.role.role_name if user.role else 'estudiante').lower()
+    
+    # Diferentes filtros según el rol
+    if role_name == 'admin':
+        # Admin ve todo
+        activities = ActivityLog.query.order_by(ActivityLog.timestamp.desc()).limit(100).all()
+    elif role_name == 'organizador':
+        # Organizador ve sus propias actividades y las de sus eventos
+        activities = ActivityLog.query.filter(
+            (ActivityLog.user_id == user_id) |
+            (ActivityLog.action_type.in_(['register_event', 'unregister_event', 'confirm_attendance']))
+        ).order_by(ActivityLog.timestamp.desc()).limit(100).all()
+    else:
+        # Estudiante ve solo sus propias actividades
+        activities = ActivityLog.query.filter_by(user_id=user_id).order_by(
+            ActivityLog.timestamp.desc()
+        ).limit(100).all()
+    
+    activities_json = []
+    for activity in activities:
+        activities_json.append({
+            'activity_id': activity.activity_id,
+            'user_id': activity.user_id,
+            'user_name': activity.user.name if activity.user else 'Usuario desconocido',
+            'action_type': activity.action_type,
+            'description': activity.description,
+            'target_resource': activity.target_resource,
+            'target_resource_id': activity.target_resource_id,
+            'timestamp': activity.timestamp.isoformat()
+        })
+    
+    return jsonify({'activities': activities_json})
 
 
 @app.route('/test_db')

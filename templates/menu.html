@@ -195,13 +195,17 @@
           </a>
         </div>
       <div class="icon-item">
-        <img src="{{ url_for('static', filename='img/icono4.png') }}" alt="Mensajes" class="menu-icon">
-        <div class="icon-label">Mensajes</div>
+        <a href="{{ url_for('mensajes') }}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;align-items:center;width:100%">
+          <img src="{{ url_for('static', filename='img/icono4.png') }}" alt="Mensajes" class="menu-icon">
+          <div class="icon-label">Mensajes</div>
+        </a>
       </div>
       <div class="icon-item">
-        <div id="config-btn" style="width:100%;display:flex;flex-direction:column;align-items:center;">
-          <img src="{{ url_for('static', filename='img/icono5.png') }}" alt="Configuración" class="menu-icon" style="cursor:pointer">
-          <div class="icon-label">Configuración</div>
+        <div style="width:100%;display:flex;flex-direction:column;align-items:center;{% if (session.get('role_name') or 'estudiante')|lower not in ['admin', 'organizador'] %}opacity:0.5;pointer-events:none{% endif %}">
+          <a href="{{ url_for('estadisticas') }}" style="text-decoration:none;color:inherit;display:flex;flex-direction:column;align-items:center;width:100%">
+            <img src="{{ url_for('static', filename='img/icono5.png') }}" alt="Estadísticas" class="menu-icon">
+            <div class="icon-label">Estadísticas</div>
+          </a>
         </div>
       </div>
     </div>
@@ -253,26 +257,51 @@
 
       function load(){
         try{
-          const p = JSON.parse(localStorage.getItem('quercus_profile')||'null') || defaultProfile;
-          document.getElementById('profile-name').textContent = p.name;
-          nick.textContent = p.nick;
-          document.getElementById('profile-email').textContent = p.email;
-          document.getElementById('profile-avatar').src = p.avatar;
-          // also update the topbar user icon so it reflects saved avatar
-          try{ if(userIcon) userIcon.src = p.avatar; }catch(e){}
-          // mark selected thumbnail if any
-          markSelected && markSelected(p.avatar);
-          
-          // Cargar rol desde el servidor
+          // Fetch user data from /api/me endpoint
           fetch('/api/me')
-            .then(r => r.json())
-            .then(data => {
-              if(data.role_name){
-                document.getElementById('profile-role').textContent = data.role_name;
-              }
+            .then(r => {
+              if (!r.ok) throw new Error('Not authenticated');
+              return r.json();
             })
-            .catch(e => console.warn('No se pudo cargar el rol:', e));
-        }catch(e){ console.warn(e); }
+            .then(data => {
+              // Use real user data from database
+              const name = data.name || data.nombre || 'Usuario';
+              const email = data.email || 'correo@ejemplo.com';
+              const role = data.role_name || 'estudiante';
+              const avatar = localStorage.getItem('quercus_avatar') || "{{ url_for('static', filename='img/icono_usuario.png') }}";
+              
+              // Try to get nick from localStorage, if not set yet, use empty string
+              let apodo = '';
+              const storedProfile = localStorage.getItem('quercus_profile');
+              if (storedProfile) {
+                try {
+                  const parsed = JSON.parse(storedProfile);
+                  apodo = parsed.nick || '';
+                } catch(e) {}
+              }
+              
+              document.getElementById('profile-name').textContent = name;
+              nick.textContent = apodo;
+              document.getElementById('profile-email').textContent = email;
+              document.getElementById('profile-role').textContent = role;
+              document.getElementById('profile-avatar').src = avatar;
+              try{ if(userIcon) userIcon.src = avatar; }catch(e){}
+              markSelected && markSelected(avatar);
+            })
+            .catch(e => {
+              // Fallback to localStorage if API fails
+              console.warn('Error loading user data:', e);
+              const p = JSON.parse(localStorage.getItem('quercus_profile')||'null') || defaultProfile;
+              document.getElementById('profile-name').textContent = p.name;
+              nick.textContent = p.nick;
+              document.getElementById('profile-email').textContent = p.email;
+              document.getElementById('profile-avatar').src = p.avatar;
+              try{ if(userIcon) userIcon.src = p.avatar; }catch(e){}
+              markSelected && markSelected(p.avatar);
+            });
+        }catch(e){ 
+          console.warn('Profile loading error:', e); 
+        }
       }
 
       function save(){

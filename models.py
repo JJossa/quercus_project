@@ -154,3 +154,19 @@ class AccessControl(db.Model):
 
     user = db.relationship('User', back_populates='access_entries')
 
+
+# -------------------------
+# TABLA ACTIVITY LOG
+# -------------------------
+class ActivityLog(db.Model):
+    __tablename__ = 'activity_log'
+
+    activity_id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('users.user_id'), nullable=False)
+    action_type = db.Column(db.String(100), nullable=False)
+    description = db.Column(db.Text)
+    target_resource = db.Column(db.String(200))
+    target_resource_id = db.Column(db.Integer)
+    timestamp = db.Column(db.DateTime, default=datetime.utcnow)
+
+    user = db.relationship('User', backref='activities')
