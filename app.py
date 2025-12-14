@@ -536,6 +536,17 @@ def api_create_evento():
     db.session.add(nuevo_evento)
     db.session.commit()
 
+    # Registrar la actividad
+    activity = ActivityLog(
+        user_id=user_id,
+        action_type='create_event',
+        description=f'Creó el evento: {titulo}',
+        target_resource='evento',
+        target_resource_id=nuevo_evento.event_id
+    )
+    db.session.add(activity)
+    db.session.commit()
+
     print(f"[API] Evento creado en BD con id {nuevo_evento.event_id}")
 
     return jsonify(nuevo_evento.to_dict()), 201
@@ -571,6 +582,11 @@ def api_delete_eventos():
 
         print(f"[API] /api/eventos/delete solicitado por user_id={user_id} ids={ids_clean}")
 
+        # Obtener los eventos antes de eliminarlos (para registrar la actividad)
+        eventos_a_eliminar = Event.query.filter(
+            Event.event_id.in_(ids_clean)
+        ).all()
+
         # 1. Eliminar primero las inscripciones (Registration) que dependan de esos eventos
         Registration.query.filter(
             Registration.event_id.in_(ids_clean)
@@ -582,6 +598,20 @@ def api_delete_eventos():
         ).delete(synchronize_session=False)
 
         db.session.commit()
+
+        # 3. Registrar las actividades de eliminación
+        for evento in eventos_a_eliminar:
+            activity = ActivityLog(
+                user_id=user_id,
+                action_type='delete_event',
+                description=f'Eliminó el evento: {evento.title}',
+                target_resource='evento',
+                target_resource_id=evento.event_id
+            )
+            db.session.add(activity)
+        
+        db.session.commit()
+
         print(f"[API] /api/eventos/delete OK - eliminados {len(ids_clean)} evento(s)")
         return jsonify({"ok": True, "deleted": len(ids_clean)}), 200
 
@@ -723,6 +753,17 @@ def api_registrar_evento(evento_id):
     generar_qr_para_registro(registro)
     db.session.commit()  # guardamos la ruta en registro.qr_code
 
+    # Registrar la actividad
+    activity = ActivityLog(
+        user_id=user_id,
+        action_type='register_event',
+        description=f'Se inscribió en el evento: {evento.title}',
+        target_resource='evento',
+        target_resource_id=evento_id
+    )
+    db.session.add(activity)
+    db.session.commit()
+
     print(f"[REGISTRO] Usuario {user_id} registrado en evento {evento_id} "
           f"con registro {registro.registration_id}")
 
@@ -750,11 +791,64 @@ def api_desregistrar_evento(evento_id):
     if not registro:
         return jsonify({"error": "No estabas registrado en este evento"}), 400
 
+    evento = Event.query.get(evento_id)
+    evento_title = evento.title if evento else 'Evento desconocido'
+
     db.session.delete(registro)
+    db.session.commit()
+
+    # Registrar la actividad
+    activity = ActivityLog(
+        user_id=user_id,
+        action_type='unregister_event',
+        description=f'Canceló su inscripción en el evento: {evento_title}',
+        target_resource='evento',
+        target_resource_id=evento_id
+    )
+    db.session.add(activity)
     db.session.commit()
 
     print(f"[REGISTRO] Usuario {user_id} DESREGISTRADO de evento {evento_id}")
     return jsonify({"ok": True}), 200
+
+@app.route('/api/registros/<int:registro_id>/confirmar-asistencia', methods=['POST'])
+def api_confirmar_asistencia(registro_id):
+    """Confirma la asistencia de un usuario a un evento mediante QR"""
+    user_id = session.get('user_id')
+    role_name = session.get('role_name', 'estudiante').lower()
+    
+    if not user_id:
+        return jsonify({"error": "No autenticado"}), 401
+    
+    # Solo organizadores y admins pueden confirmar asistencia
+    if role_name not in ['organizador', 'admin']:
+        return jsonify({"error": "No autorizado para confirmar asistencia"}), 403
+    
+    registro = Registration.query.get(registro_id)
+    if not registro:
+        return jsonify({"error": "Registro no encontrado"}), 404
+    
+    # Actualizar el estado del registro a "asistió"
+    registro.status = 'asistió'
+    db.session.commit()
+    
+    # Registrar la actividad
+    evento = registro.event
+    evento_title = evento.title if evento else 'Evento desconocido'
+    usuario_name = registro.user.name if registro.user else 'Usuario desconocido'
+    
+    activity = ActivityLog(
+        user_id=user_id,
+        action_type='confirm_attendance',
+        description=f'Confirmó asistencia de {usuario_name} en el evento: {evento_title}',
+        target_resource='registro',
+        target_resource_id=registro_id
+    )
+    db.session.add(activity)
+    db.session.commit()
+    
+    print(f"[ASISTENCIA] Organizador {user_id} confirmó asistencia del usuario {registro.user_id} en evento {registro.event_id}")
+    return jsonify({"ok": True, "status": "asistió"}), 200
 
 @app.route('/eventos/<int:evento_id>/inscritos')
 @require_roles(['admin'])
@@ -817,30 +911,38 @@ def api_user_stats():
         total_inscriptions = Registration.query.count()
         
         # Asistencia confirmada
-        total_attendance = Registration.query.filter(Registration.qr_code != None).count()
-        
-        # Sedes principales
-        top_locations = db.session.query(
-            Event.location,
-            db.func.count(Event.event_id).label('count')
-        ).group_by(Event.location).order_by(
-            db.func.count(Event.event_id).desc()
-        ).limit(5).all()
+        total_attendance = Registration.query.filter(
+            Registration.status == 'asistió'
+        ).count()
     else:
-        # Eventos creados por este usuario (organizador)
-        # Nota: tabla Event no tiene campo organizer_id, así que devolvemos 0
-        events_created = 0  # Event.query.filter_by(organizer_id=user_id).count()
-        total_inscriptions = 0
-        total_attendance = 0
-        top_locations = []
-    
-    locations = [{'location': loc[0], 'count': loc[1]} for loc in top_locations]
+        # Para organizadores: eventos que creó (a través del ActivityLog)
+        created_events_logs = ActivityLog.query.filter_by(
+            user_id=user_id,
+            action_type='create_event'
+        ).all()
+        
+        event_ids = [log.target_resource_id for log in created_events_logs if log.target_resource_id]
+        events_created = len(event_ids)
+        
+        # Total de inscripciones en esos eventos
+        if event_ids:
+            total_inscriptions = Registration.query.filter(
+                Registration.event_id.in_(event_ids)
+            ).count()
+            
+            # Asistencia confirmada en esos eventos
+            total_attendance = Registration.query.filter(
+                Registration.event_id.in_(event_ids),
+                Registration.status == 'asistió'
+            ).count()
+        else:
+            total_inscriptions = 0
+            total_attendance = 0
     
     return jsonify({
         'events_created': events_created,
         'total_inscriptions': total_inscriptions,
-        'total_attendance': total_attendance,
-        'top_locations': locations
+        'total_attendance': total_attendance
     })
 
 
@@ -863,50 +965,104 @@ def api_user_stats_pdf():
     try:
         from reportlab.lib.pagesizes import letter
         from reportlab.lib import colors
-        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer, Table, TableStyle, Image, PageTemplate, Frame
         from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
         from reportlab.lib.units import inch
         from io import BytesIO
+        import os
         
-        # Datos
-        stats_data = {
-            'events_created': 0,  # Event.query.filter_by(organizer_id=user_id).count() - campo no existe
-            'total_inscriptions': 0,
-            'total_attendance': 0
-        }
+        # Obtener datos de estadísticas
+        if role_name == 'admin':
+            events_created = Event.query.count()
+            total_inscriptions = Registration.query.count()
+            total_attendance = Registration.query.filter(
+                Registration.status == 'asistió'
+            ).count()
+        else:
+            created_events_logs = ActivityLog.query.filter_by(
+                user_id=user_id,
+                action_type='create_event'
+            ).all()
+            event_ids = [log.target_resource_id for log in created_events_logs if log.target_resource_id]
+            events_created = len(event_ids)
+            
+            if event_ids:
+                total_inscriptions = Registration.query.filter(
+                    Registration.event_id.in_(event_ids)
+                ).count()
+                total_attendance = Registration.query.filter(
+                    Registration.event_id.in_(event_ids),
+                    Registration.status == 'asistió'
+                ).count()
+            else:
+                total_inscriptions = 0
+                total_attendance = 0
         
         # Crear PDF
         buffer = BytesIO()
-        doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=0.75*inch)
+        doc = SimpleDocTemplate(buffer, pagesize=letter, topMargin=1*inch, bottomMargin=1*inch)
         elements = []
         
         styles = getSampleStyleSheet()
+        
+        # Estilos personalizados
         title_style = ParagraphStyle(
             'CustomTitle',
             parent=styles['Heading1'],
-            fontSize=24,
+            fontSize=28,
             textColor=colors.HexColor('#8c75e6'),
-            spaceAfter=20
+            spaceAfter=10,
+            alignment=1  # Centro
         )
         
-        # Título
-        elements.append(Paragraph('Estadísticas de Eventos - QUERCUS', title_style))
+        subtitle_style = ParagraphStyle(
+            'Subtitle',
+            parent=styles['Normal'],
+            fontSize=14,
+            textColor=colors.HexColor('#666666'),
+            spaceAfter=20,
+            alignment=1  # Centro
+        )
+        
+        header_style = ParagraphStyle(
+            'Header',
+            parent=styles['Normal'],
+            fontSize=12,
+            textColor=colors.HexColor('#333333'),
+            spaceAfter=8
+        )
+        
+        # Encabezado
+        elements.append(Paragraph('QUERCUS', title_style))
+        elements.append(Paragraph('Plataforma de Gestión de Eventos', subtitle_style))
+        elements.append(Spacer(1, 0.2*inch))
+        
+        # Descripción
+        description = f"""
+        <b>Reporte de Estadísticas</b><br/>
+        Este documento contiene un resumen de las estadísticas de eventos y participación 
+        generado por la plataforma QUERCUS. Los datos aquí presentados reflejan la actividad 
+        registrada hasta la fecha y hora de generación del reporte.
+        """
+        elements.append(Paragraph(description, header_style))
         elements.append(Spacer(1, 0.3*inch))
         
         # Información del usuario
-        elements.append(Paragraph(f'<b>Usuario:</b> {user.name} ({user.email})', styles['Normal']))
-        elements.append(Paragraph(f'<b>Fecha:</b> {date.today().strftime("%d de %B de %Y")}', styles['Normal']))
+        elements.append(Paragraph(f'<b>Generado por:</b> {user.name} ({user.email})', styles['Normal']))
+        now = datetime.now()
+        fecha_hora = now.strftime("%d de %B de %Y a las %H:%M:%S")
+        elements.append(Paragraph(f'<b>Fecha y Hora:</b> {fecha_hora}', styles['Normal']))
         elements.append(Spacer(1, 0.3*inch))
         
         # Tabla de estadísticas
         data = [
-            ['Métrica', 'Cantidad'],
-            ['Eventos Creados', str(stats_data['events_created'])],
-            ['Total de Inscripciones', str(stats_data['total_inscriptions'])],
-            ['Asistencia Confirmada', str(stats_data['total_attendance'])]
+            ['Métrica', 'Valor'],
+            ['Eventos Creados', str(events_created)],
+            ['Total de Inscripciones', str(total_inscriptions)],
+            ['Asistencia Confirmada', str(total_attendance)]
         ]
         
-        table = Table(data, colWidths=[3*inch, 2*inch])
+        table = Table(data, colWidths=[3.5*inch, 1.5*inch])
         table.setStyle(TableStyle([
             ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#8c75e6')),
             ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
@@ -914,13 +1070,19 @@ def api_user_stats_pdf():
             ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
             ('FONTSIZE', (0, 0), (-1, 0), 14),
             ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
-            ('BACKGROUND', (0, 1), (-1, -1), colors.beige),
-            ('GRID', (0, 0), (-1, -1), 1, colors.black)
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#f9f9fb')),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 12),
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#cccccc')),
+            ('ROWBACKGROUNDS', (0, 1), (-1, -1), [colors.white, colors.HexColor('#f9f9fb')])
         ]))
         
         elements.append(table)
-        elements.append(Spacer(1, 0.3*inch))
-        elements.append(Paragraph('<i>Este documento fue generado automáticamente por QUERCUS</i>', styles['Normal']))
+        elements.append(Spacer(1, 0.5*inch))
+        
+        # Pie de página
+        footer_text = f'QUERCUS © 2025 | Generado: {fecha_hora} | Reporte Confidencial'
+        elements.append(Paragraph(f'<i style="font-size:9px; color:#999999">{footer_text}</i>', styles['Normal']))
         
         doc.build(elements)
         buffer.seek(0)
@@ -929,7 +1091,7 @@ def api_user_stats_pdf():
             buffer,
             mimetype='application/pdf',
             as_attachment=True,
-            download_name=f'estadisticas_{date.today().isoformat()}.pdf'
+            download_name=f'estadisticas_{now.strftime("%Y%m%d_%H%M%S")}.pdf'
         )
         
     except ImportError:

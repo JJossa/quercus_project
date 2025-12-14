@@ -207,12 +207,6 @@
         </div>
       </div>
 
-      <!-- Sedes principales -->
-      <div class="stat-section">
-        <h3>Sedes Principales</h3>
-        <div id="locations-container" class="locations-list"></div>
-      </div>
-
       <!-- Botón descargar PDF -->
       <div style="text-align:center">
         <button id="btn-pdf-download" class="btn-pdf">
@@ -253,19 +247,6 @@
         document.getElementById('stat-created').textContent = stats.events_created || 0;
         document.getElementById('stat-inscriptions').textContent = stats.total_inscriptions || 0;
         document.getElementById('stat-attendance').textContent = stats.total_attendance || 0;
-
-        // Rellenar sedes
-        const locationsContainer = document.getElementById('locations-container');
-        if (stats.top_locations && stats.top_locations.length > 0) {
-          locationsContainer.innerHTML = stats.top_locations.map(loc => `
-            <div class="location-item">
-              <span class="location-name">📍 ${loc.location || 'Sin sede'}</span>
-              <span class="location-count">${loc.count} eventos</span>
-            </div>
-          `).join('');
-        } else {
-          locationsContainer.innerHTML = '<div class="empty-message" style="padding:20px;background:#fff;border-radius:8px">No hay datos de sedes</div>';
-        }
 
         loadingEl.style.display = 'none';
         contentEl.style.display = 'block';

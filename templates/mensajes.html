@@ -88,6 +88,14 @@
       background: #3498db;
     }
 
+    .activity-type.delete_event{
+      background: #c0392b;
+    }
+
+    .activity-type.confirm_attendance{
+      background: #16a085;
+    }
+
     .activity-type.qr{
       background: #f39c12;
     }
@@ -179,6 +187,7 @@
 
   <main class="messages-container">
     <h2>Registro de Actividad</h2>
+    <p style="color: #666; font-size: 14px; margin-top: -8px;">Historial de tus acciones en la plataforma</p>
 
     <div id="loading" class="loading">Cargando actividad...</div>
 
@@ -188,7 +197,8 @@
         <button class="filter-btn" data-filter="create_event">Crear Evento</button>
         <button class="filter-btn" data-filter="register_event">Inscribirse</button>
         <button class="filter-btn" data-filter="unregister_event">Cancelar Inscripción</button>
-        <button class="filter-btn" data-filter="confirm_attendance">QR Confirmado</button>
+        <button class="filter-btn" data-filter="delete_event">Eliminar Evento</button>
+        <button class="filter-btn" data-filter="confirm_attendance">Asistencia Confirmada</button>
       </div>
 
       <div id="activity-list" class="activity-log"></div>
@@ -207,16 +217,16 @@
       'create_event': 'Crear Evento',
       'register_event': 'Inscribirse',
       'unregister_event': 'Cancelar',
-      'confirm_attendance': 'Confirmado (QR)',
-      'delete_event': 'Eliminar Evento'
+      'delete_event': 'Eliminar Evento',
+      'confirm_attendance': 'Asistencia Confirmada'
     };
 
     const actionIcons = {
       'create_event': '📝',
       'register_event': '✓',
       'unregister_event': '✕',
-      'confirm_attendance': '✓',
-      'delete_event': '🗑️'
+      'delete_event': '🗑️',
+      'confirm_attendance': '✅'
     };
 
     document.addEventListener('DOMContentLoaded', async function(){
