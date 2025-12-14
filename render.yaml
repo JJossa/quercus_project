@@ -20,5 +20,5 @@ services:
 databases:
   - name: quercus-db
     databaseName: quercus_db
-    user: postgres
+    user: quercusadmin
     plan: free
