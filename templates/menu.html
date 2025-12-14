@@ -143,6 +143,7 @@
           <div class="profile-row"><strong>Nombre:</strong><div id="profile-name">admin</div></div>
           <div class="profile-row"><strong>Apodo:</strong><div id="profile-nick" class="editable" contenteditable="true">admin</div></div>
           <div class="profile-row"><strong>Correo:</strong><div id="profile-email">admin@gmail.com</div></div>
+          <div class="profile-row"><strong>Rol:</strong><div id="profile-role" style="color:#8c75e6;font-weight:600">estudiante</div></div>
         </div>
         <div class="profile-avatar-wrap profile-avatar-bottom">
           <img id="profile-avatar" src="{{ url_for('static', filename='img/icono_usuario.png') }}" alt="avatar" class="profile-avatar">
@@ -157,8 +158,9 @@
             <img src="{{ url_for('static', filename='img/avatares/avatar4.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar4.png') }}" class="avatar-thumb">
           </div>
         </div>
-        <div style="text-align:center;margin-top:10px;">
-          <button id="logout-btn" class="logout-btn">Salir</button>
+        <div style="text-align:center;margin-top:10px;display:flex;gap:8px">
+          <button id="config-btn" class="logout-btn" style="background:#8c75e6;flex:1">Configuración</button>
+          <button id="logout-btn" class="logout-btn" style="flex:1">Salir</button>
         </div>
       </div>
     </div>
@@ -217,38 +219,25 @@
     </div>
   </div>
 
-  <!-- Configuration modal (avatar + calendar) -->
-  <div id="config-modal" class="logout-modal" aria-hidden="true" style="display:none;">
-    <div class="logout-box" style="max-width:980px;width:94%;padding:12px 14px;">
-      <div style="display:flex;gap:14px;align-items:flex-start;">
-        <div style="min-width:260px;">
-          <div style="text-align:center;margin-bottom:8px">
-            <h3 style="margin:6px 0;font-family:'DynaPuff',cursive">Configuración</h3>
-          </div>
-          <!-- profile area copied for parity -->
-          <div style="background:#fff;border-radius:12px;padding:12px;">
-            <div style="text-align:center">
-              <img id="cfg-profile-avatar" src="{{ url_for('static', filename='img/icono_usuario.png') }}" alt="avatar" style="width:86px;height:86px;border-radius:12px;display:inline-block">
-            </div>
-            <div style="margin-top:10px;font-weight:700">Cuenta</div>
-            <div style="margin-top:6px">Nombre: <span id="cfg-profile-name">admin</span></div>
-            <div>Apodo: <span id="cfg-profile-nick">admin</span></div>
-            <div style="margin-top:10px;text-align:center"><a href="{{ url_for('menu') }}" class="btn-no" style="text-decoration:none;padding:8px 18px;border-radius:10px;">Volver al menú</a></div>
-          </div>
+  <!-- Configuration modal (editar perfil) -->
+  <div id="config-modal" class="logout-modal" aria-hidden="true" style="visibility:hidden;opacity:0">
+    <div class="logout-box" style="width:380px;max-width:90%">
+      <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="logo" class="modal-logo">
+      <h3 style="margin:8px 0 12px;font-weight:700;color:#333">Configuración</h3>
+      <form id="config-form" style="text-align:left;display:grid;gap:10px">
+        <div>
+          <label style="font-weight:700;font-size:12px;color:#333">Apodo</label>
+          <input id="config-nick" type="text" placeholder="Tu apodo" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;margin-top:4px">
         </div>
-        <div style="flex:1;">
-          <div style="background:#fff;border-radius:12px;padding:14px;min-height:420px;display:flex;flex-direction:column;align-items:center;">
-            <div id="calendar-root" style="width:100%;max-width:640px;"></div>
-            <div id="events-list" style="width:100%;max-width:760px;margin-top:12px;display:none">
-              <div class="ev-slider" aria-live="polite" role="region" style="width:100%">
-                <button class="ev-nav-btn ev-prev" aria-label="Anterior" style="display:none">‹</button>
-                <div class="ev-track" role="list"></div>
-                <button class="ev-nav-btn ev-next" aria-label="Siguiente" style="display:none">›</button>
-              </div>
-            </div>
-          </div>
+        <div>
+          <label style="font-weight:700;font-size:12px;color:#333">Contraseña (dejar vacío para no cambiar)</label>
+          <input id="config-password" type="password" placeholder="Nueva contraseña" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;margin-top:4px">
         </div>
-      </div>
+        <div style="text-align:center;display:flex;gap:8px;margin-top:8px">
+          <button id="config-cancel" type="button" class="btn-no" style="flex:1">Cancelar</button>
+          <button id="config-save" type="button" class="btn-yes" style="flex:1">Guardar</button>
+        </div>
+      </form>
     </div>
   </div>
 
@@ -273,6 +262,16 @@
           try{ if(userIcon) userIcon.src = p.avatar; }catch(e){}
           // mark selected thumbnail if any
           markSelected && markSelected(p.avatar);
+          
+          // Cargar rol desde el servidor
+          fetch('/api/me')
+            .then(r => r.json())
+            .then(data => {
+              if(data.role_name){
+                document.getElementById('profile-role').textContent = data.role_name;
+              }
+            })
+            .catch(e => console.warn('No se pudo cargar el rol:', e));
         }catch(e){ console.warn(e); }
       }
 
@@ -330,6 +329,78 @@
         try{ localStorage.removeItem('quercus_profile'); }catch(e){}
         window.location.href = '/logout';
       });
+
+      // Handlers para el modal de configuración
+      const configBtn = document.getElementById('config-btn');
+      const configModal = document.getElementById('config-modal');
+      const configNick = document.getElementById('config-nick');
+      const configPassword = document.getElementById('config-password');
+      const configCancel = document.getElementById('config-cancel');
+      const configSave = document.getElementById('config-save');
+
+      if (configBtn) {
+        configBtn.addEventListener('click', function(e){ e.stopPropagation(); 
+          // Llenar valores actuales
+          configNick.value = (nick && nick.textContent) || '';
+          configPassword.value = '';
+          configModal.style.visibility = 'visible';
+          configModal.style.opacity = '1';
+          configModal.setAttribute('aria-hidden','false');
+        });
+      }
+
+      if (configCancel) {
+        configCancel.addEventListener('click', function(e){ e.stopPropagation();
+          configModal.style.visibility = 'hidden';
+          configModal.style.opacity = '0';
+          configModal.setAttribute('aria-hidden','true');
+        });
+      }
+
+      if (configSave) {
+        configSave.addEventListener('click', async function(e){ e.stopPropagation();
+          const nuevoNick = configNick.value.trim();
+          const nuevoPassword = configPassword.value.trim();
+
+          if (!nuevoNick) {
+            alert('El apodo no puede estar vacío');
+            return;
+          }
+
+          try {
+            const payload = { nick: nuevoNick };
+            if (nuevoPassword) {
+              payload.password = nuevoPassword;
+            }
+
+            const resp = await fetch('/api/user/update', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+
+            const data = await resp.json();
+
+            if (resp.ok) {
+              // Actualizar en el DOM y localStorage
+              nick.textContent = nuevoNick;
+              document.getElementById('profile-nick').textContent = nuevoNick;
+              save();
+              configModal.style.visibility = 'hidden';
+              configModal.style.opacity = '0';
+              configModal.setAttribute('aria-hidden','true');
+              alert('Perfil actualizado exitosamente');
+            } else {
+              alert(data.error || 'Error al actualizar el perfil');
+            }
+          } catch (err) {
+            console.error('Error:', err);
+            alert('Error al conectar con el servidor');
+          }
+        });
+      }
+
+      configModal && configModal.addEventListener('click', function(ev){ if(ev.target === configModal){ configModal.style.visibility = 'hidden'; configModal.style.opacity = '0'; configModal.setAttribute('aria-hidden','true'); } });
     })();
   </script>
   <script>

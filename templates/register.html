@@ -53,6 +53,16 @@
         <input type="password" name="confirmar" placeholder="CONFIRMAR CONTRASEÑA" required>
       </div>
 
+      <div class="input-group">
+        <label for="rol" style="display: block; margin-bottom: 8px; font-weight: 700;">TIPO DE CUENTA:</label>
+        <select name="rol" id="rol" required style="width: 100%; padding: 12px; border-radius: 8px; border: 2px solid #333; font-weight: 700;">
+          <option value="">-- Selecciona un rol --</option>
+          <option value="estudiante">Estudiante (Ver eventos, inscribirse)</option>
+          <option value="organizador">Organizador (Crear y gestionar eventos)</option>
+          <option value="admin">Administrador (Acceso total)</option>
+        </select>
+      </div>
+
       <button type="button" class="btn-google">Continuar con Google</button>
       <button type="submit" class="btn-register">REGISTRAR</button>
     </form>

@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="es">
 <head>
-  <meta charset="utf-8" />
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>Eventos - Quercus</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
@@ -67,18 +67,23 @@
   .coming-ok:hover{transform:translateY(-2px)}
     @media (max-width:920px){ .events-grid-top{grid-template-columns:repeat(2,1fr);} .events-grid-bottom{grid-template-columns:repeat(2,1fr);} }
     @media (max-width:720px){ .event-thumb{width:100px;height:100px} .events-grid-top,.events-grid-bottom{grid-template-columns:1fr} }
-  .btn-mis-eventos{
+  .btn-mis-eventos,.btn-menu-link{
   background:#8c75e6;
   color:#fff;
-  padding:6px 14px;
+  padding:8px 16px;
   border-radius:999px;
   text-decoration:none;
   font-weight:700;
   font-size:14px;
   box-shadow:0 4px 10px rgba(0,0,0,0.18);
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  transition:all .12s ease;
 }
-.btn-mis-eventos:hover{
-  transform:translateY(-1px);
+.btn-mis-eventos:hover,.btn-menu-link:hover{
+  transform:translateY(-2px);
+  box-shadow:0 6px 14px rgba(0,0,0,0.22);
 }
 
   </style>
@@ -107,6 +112,7 @@
           <div class="profile-row"><strong>Nombre:</strong><div id="profile-name">admin</div></div>
           <div class="profile-row"><strong>Apodo:</strong><div id="profile-nick" class="editable" contenteditable="true">admin</div></div>
           <div class="profile-row"><strong>Correo:</strong><div id="profile-email">admin@gmail.com</div></div>
+          <div class="profile-row"><strong>Rol:</strong><div id="profile-role" style="color:#8c75e6;font-weight:600">estudiante</div></div>
         </div>
         <div class="profile-avatar-wrap profile-avatar-bottom">
           <img id="profile-avatar" src="{{ url_for('static', filename='img/icono_usuario.png') }}" alt="avatar" class="profile-avatar">
@@ -120,7 +126,7 @@
             <img src="{{ url_for('static', filename='img/avatares/avatar4.png') }}" data-src="{{ url_for('static', filename='img/avatares/avatar4.png') }}" class="avatar-thumb">
           </div>
         </div>
-        <div style="text-align:center;margin-top:10px;"><button id="logout-btn" class="logout-btn">Salir</button></div>
+        <div style="text-align:center;margin-top:10px;display:flex;gap:8px"><button id="config-btn" class="logout-btn" style="background:#8c75e6;flex:1">Configuración</button><button id="logout-btn" class="logout-btn" style="flex:1">Salir</button></div>
       </div>
     </div>
   </div>
@@ -134,6 +140,27 @@
         <button id="confirm-yes" class="btn-yes">Sí</button>
         <button id="confirm-no" class="btn-no">No</button>
       </div>
+    </div>
+  </div>
+  <!-- Config modal -->
+  <div id="config-modal" class="logout-modal" aria-hidden="true" style="visibility:hidden;opacity:0">
+    <div class="logout-box" style="width:380px;max-width:90%">
+      <img src="{{ url_for('static', filename='img/logo.jpg') }}" alt="logo" class="modal-logo">
+      <h3 style="margin:8px 0 12px;font-weight:700;color:#333">Configuración</h3>
+      <form id="config-form" style="text-align:left;display:grid;gap:10px">
+        <div>
+          <label style="font-weight:700;font-size:12px;color:#333">Apodo</label>
+          <input id="config-nick" type="text" placeholder="Tu apodo" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;margin-top:4px">
+        </div>
+        <div>
+          <label style="font-weight:700;font-size:12px;color:#333">Contraseña (dejar vacío para no cambiar)</label>
+          <input id="config-password" type="password" placeholder="Nueva contraseña" style="width:100%;padding:8px 10px;border:1px solid #ddd;border-radius:8px;box-sizing:border-box;margin-top:4px">
+        </div>
+        <div style="text-align:center;display:flex;gap:8px;margin-top:8px">
+          <button id="config-cancel" type="button" class="btn-no" style="flex:1">Cancelar</button>
+          <button id="config-save" type="button" class="btn-yes" style="flex:1">Guardar</button>
+        </div>
+      </form>
     </div>
   </div>
   <!-- Coming soon modal -->
@@ -183,6 +210,19 @@
         <div class="event-card coming-soon" data-city="La Paz"><img src="{{ url_for('static', filename='img/eventos/la paz.png') }}" class="event-thumb"><div class="event-label">La Paz</div></div>
       </div>
     </div>
+    <!-- En eventos.html, agregar botón junto al "Crear Evento" -->
+    <button id="editarEvento">✏️ Editar Evento</button>
+
+    <!-- Modal de edición (agregar) -->
+    <div id="editModal" class="modal">
+      <form id="editForm">
+        <input name="titulo" placeholder="Título">
+        <input name="fecha" type="date">
+        <input name="hora" type="time">
+        <!-- más campos -->
+        <button type="submit">Guardar cambios</button>
+      </form>
+    </div>
   </main>
 
   <script>
@@ -204,6 +244,16 @@
           document.getElementById('profile-avatar').src = p.avatar;
           try{ if(userIcon) userIcon.src = p.avatar; }catch(e){}
           markSelected && markSelected(p.avatar);
+          
+          // Cargar rol desde el servidor
+          fetch('/api/me')
+            .then(r => r.json())
+            .then(data => {
+              if(data.role_name){
+                document.getElementById('profile-role').textContent = data.role_name;
+              }
+            })
+            .catch(e => console.warn('No se pudo cargar el rol:', e));
         }catch(e){ console.warn(e); }
       }
 
@@ -262,6 +312,78 @@
       confirmNo && confirmNo.addEventListener('click', function(e){ e.stopPropagation(); logoutModal.classList.remove('visible'); logoutModal.setAttribute('aria-hidden','true'); });
       logoutModal && logoutModal.addEventListener('click', function(ev){ if(ev.target === logoutModal){ logoutModal.classList.remove('visible'); logoutModal.setAttribute('aria-hidden','true'); } });
       confirmYes && confirmYes.addEventListener('click', function(){ try{ localStorage.removeItem('quercus_profile'); }catch(e){} window.location.href = '/logout'; });
+
+      // Handlers para el modal de configuración
+      const configBtn = document.getElementById('config-btn');
+      const configModal = document.getElementById('config-modal');
+      const configNick = document.getElementById('config-nick');
+      const configPassword = document.getElementById('config-password');
+      const configCancel = document.getElementById('config-cancel');
+      const configSave = document.getElementById('config-save');
+
+      if (configBtn) {
+        configBtn.addEventListener('click', function(e){ e.stopPropagation(); 
+          // Llenar valores actuales
+          configNick.value = (nick && nick.textContent) || '';
+          configPassword.value = '';
+          configModal.style.visibility = 'visible';
+          configModal.style.opacity = '1';
+          configModal.setAttribute('aria-hidden','false');
+        });
+      }
+
+      if (configCancel) {
+        configCancel.addEventListener('click', function(e){ e.stopPropagation();
+          configModal.style.visibility = 'hidden';
+          configModal.style.opacity = '0';
+          configModal.setAttribute('aria-hidden','true');
+        });
+      }
+
+      if (configSave) {
+        configSave.addEventListener('click', async function(e){ e.stopPropagation();
+          const nuevoNick = configNick.value.trim();
+          const nuevoPassword = configPassword.value.trim();
+
+          if (!nuevoNick) {
+            alert('El apodo no puede estar vacío');
+            return;
+          }
+
+          try {
+            const payload = { nick: nuevoNick };
+            if (nuevoPassword) {
+              payload.password = nuevoPassword;
+            }
+
+            const resp = await fetch('/api/user/update', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify(payload)
+            });
+
+            const data = await resp.json();
+
+            if (resp.ok) {
+              // Actualizar en el DOM y localStorage
+              nick.textContent = nuevoNick;
+              document.getElementById('profile-nick').textContent = nuevoNick;
+              save();
+              configModal.style.visibility = 'hidden';
+              configModal.style.opacity = '0';
+              configModal.setAttribute('aria-hidden','true');
+              alert('Perfil actualizado exitosamente');
+            } else {
+              alert(data.error || 'Error al actualizar el perfil');
+            }
+          } catch (err) {
+            console.error('Error:', err);
+            alert('Error al conectar con el servidor');
+          }
+        });
+      }
+
+      configModal && configModal.addEventListener('click', function(ev){ if(ev.target === configModal){ configModal.style.visibility = 'hidden'; configModal.style.opacity = '0'; configModal.setAttribute('aria-hidden','true'); } });
     })();
   </script>
   <script>
@@ -301,9 +423,10 @@
       .evento-fecha{color:#8c75e6;font-weight:600}
       .evento-desc{color:#555;margin-top:10px}
       .evento-actions{display:flex;gap:10px;margin-top:12px}
-      .btn-registrarse{background:#8c75e6;color:#fff;border:0;padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:600;transition:background .12s ease,transform .12s ease;flex:1}
+      .btn-registrarse{background:#8c75e6;color:#fff;border:0;padding:8px 16px;border-radius:8px;cursor:pointer;font-weight:600;transition:all .12s ease;flex:1}
       .btn-registrarse:hover{background:#7860d4;transform:translateY(-2px)}
-      .btn-registrarse.registered{background:#27ae60;cursor:not-allowed}
+      .btn-registrarse.registered{background:#e74c3c;cursor:pointer}
+      .btn-registrarse.registered:hover{background:#ff6b6b}
     `;
     document.head.appendChild(style);
 
@@ -387,7 +510,7 @@
           // Éxito: marcar como registrado
           boton.dataset.estado = 'registrado';
           boton.classList.add('registered');
-          boton.textContent = '✓ Registrado (Cancelar)';
+          boton.textContent = 'Cancelar';
           console.log('Registrado en evento:', eventoId);
 
         } catch (err) {

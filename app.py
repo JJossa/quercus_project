@@ -3,14 +3,26 @@ import os       #Para codigo QR
 import io
 import base64
 import qrcode
+import sys
 from functools import wraps
 from datetime import datetime, date  # para logout
+from flask_migrate import Migrate
 from flask import Flask, render_template, request, redirect, url_for, jsonify, session, send_file
+from flask_sqlalchemy import SQLAlchemy
+
+sys.stdout.reconfigure(encoding='utf-8')
+
 # from users import get_users, add_user  # usar get_users() para leer siempre el estado actual
 from events import get_events, add_event, obtener_eventos_usuario, registrar_usuario_evento, desregistrar_usuario  # endpoints simples para eventos
 from models import db, User, Role, Event, Registration, Payment, Notification, Report, AccessControl
 
 app = Flask(__name__)
+
+@app.after_request
+def set_json_encoding(response):
+    if response.content_type.startswith("application/json"):
+        response.headers["Content-Type"] = "application/json; charset=utf-8"
+    return response
 
 # 🔌 Configuración de conexión a PostgreSQL
 app.config['SQLALCHEMY_DATABASE_URI'] = 'postgresql://postgres:DAZhzd79@localhost:5432/quercus_db'
@@ -22,6 +34,7 @@ app.secret_key = 'cambia-esto-por-algo-muy-secreto'
 # Inicializar SQLAlchemy con la app
 db.init_app(app)
 
+migrate = Migrate(app, db)
 
 @app.route('/')
 def home():
@@ -93,6 +106,104 @@ def login():
     # GET
     return render_template('login.html')
 
+@app.route('/api/me')
+def get_current_user():
+    """Devuelve la información del usuario actual (para el panel de perfil en el frontend)"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"error": "No hay sesión"}), 401
+    
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "Usuario no encontrado"}), 404
+    
+    role_name = session.get('role_name', 'estudiante')
+    
+    return jsonify({
+        "user_id": user.user_id,
+        "name": user.name,
+        "email": user.email,
+        "role_name": role_name,
+        "avatar": session.get('avatar', '')  # si lo guardas en sesión
+    }), 200
+
+@app.route('/api/user/events-calendar')
+def get_user_events_calendar():
+    """Obtiene eventos creados por el usuario e inscripciones para mostrar en calendario"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"error": "No hay sesión"}), 401
+    
+    # Eventos creados por el usuario
+    eventos_creados = Event.query.filter_by(creator_id=user_id).all()
+    
+    # Eventos en los que está inscrito
+    registros = Registration.query.filter_by(user_id=user_id).all()
+    eventos_inscritos = [r.event for r in registros if r.event]
+    
+    respuesta = {
+        "creados": [
+            {
+                "id": e.event_id,
+                "titulo": e.title,
+                "fecha": e.date.isoformat() if e.date else None,
+                "tipo": "creado"
+            }
+            for e in eventos_creados
+        ],
+        "inscritos": [
+            {
+                "id": e.event_id,
+                "titulo": e.title,
+                "fecha": e.date.isoformat() if e.date else None,
+                "tipo": "inscrito"
+            }
+            for e in eventos_inscritos
+        ]
+    }
+    
+    return jsonify(respuesta), 200
+
+@app.route('/api/user/update', methods=['POST'])
+def update_user_profile():
+    """Actualiza el perfil del usuario (apodo, contraseña, rol)"""
+    user_id = session.get('user_id')
+    if not user_id:
+        return jsonify({"error": "No hay sesión"}), 401
+    
+    user = User.query.get(user_id)
+    if not user:
+        return jsonify({"error": "Usuario no encontrado"}), 404
+    
+    data = request.get_json() or {}
+    
+    # Actualizar apodo
+    if 'nick' in data:
+        user.name = data['nick'].strip()
+    
+    # Actualizar contraseña
+    if 'password' in data:
+        new_password = data['password'].strip()
+        if new_password:
+            user.password = new_password
+    
+    # Actualizar rol (solo si el usuario es admin)
+    if 'role_name' in data:
+        role_name = data['role_name'].strip()
+        if role_name in ['estudiante', 'organizador', 'admin']:
+            rol_obj = Role.query.filter_by(role_name=role_name).first()
+            if rol_obj:
+                user.role_id = rol_obj.role_id
+                session['role_name'] = role_name
+    
+    try:
+        db.session.commit()
+        return jsonify({"ok": True, "message": "Perfil actualizado exitosamente"}), 200
+    except Exception as e:
+        db.session.rollback()
+        print(f"[ERROR] Actualizando perfil: {e}")
+        return jsonify({"error": "Error al actualizar el perfil"}), 500
+
 @app.route('/logout')
 def logout():
     user_id   = session.get('user_id')
@@ -142,12 +253,14 @@ def register():
         correo = request.form.get('correo', '').strip()
         contrasena = request.form.get('contrasena', '').strip()
         confirmar = request.form.get('confirmar', '').strip()
+        rol_nombre = request.form.get('rol', 'estudiante').strip()  # 👈 NUEVO
 
         print("========== ENTRO A REGISTER (NUEVA VERSION) ==========")
         print(f"[REGISTER] Usuario: '{usuario}'")
         print(f"[REGISTER] Correo: '{correo}'")
         print(f"[REGISTER] Contraseña: '{contrasena}'")
         print(f"[REGISTER] Confirmar: '{confirmar}'")
+        print(f"[REGISTER] Rol: '{rol_nombre}'")
 
         # 1. Validar campos vacíos
         if not usuario or not correo or not contrasena or not confirmar:
@@ -173,18 +286,29 @@ def register():
             print("[REGISTER] ✗ Usuario o correo ya existen")
             return render_template('register.html', error="El nombre de usuario o correo ya existen.")
 
-        # 5. Crear el usuario
+        # 5. Validar rol seleccionado
+        if rol_nombre not in ['estudiante', 'organizador', 'admin']:
+            print(f"[REGISTER] ✗ Rol inválido: {rol_nombre}")
+            return render_template('register.html', error="Rol inválido. Selecciona estudiante, organizador o admin.")
+
+        # 6. Buscar el role_id en la BD
+        rol_obj = Role.query.filter_by(role_name=rol_nombre).first()
+        if not rol_obj:
+            print(f"[REGISTER] ✗ Rol no existe en BD: {rol_nombre}")
+            return render_template('register.html', error="El rol seleccionado no existe en el sistema.")
+
+        # 7. Crear el usuario CON ROL ASIGNADO
         nuevo_usuario = User(
             name=usuario,
             email=correo,
             password=contrasena,
-            role_id=None
+            role_id=rol_obj.role_id  # 👈 AHORA ASIGNA EL ROL
         )
 
         db.session.add(nuevo_usuario)
         db.session.commit()
 
-        print(f"[REGISTER] ✓ Usuario creado en BD con id {nuevo_usuario.user_id}")
+        print(f"[REGISTER] ✓ Usuario creado en BD con id {nuevo_usuario.user_id} y rol {rol_nombre}")
         return redirect(url_for('login'))
 
     # GET
@@ -559,7 +683,7 @@ def api_registrar_evento(evento_id):
         return jsonify({"error": "No autenticado"}), 401
 
     # Verificar que el evento exista
-    evento = Event.query.get(evento_id)
+    evento = db.session.get(Event, evento_id)
     if not evento:
         return jsonify({"error": "Evento no encontrado"}), 404
 
